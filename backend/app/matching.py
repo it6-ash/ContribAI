@@ -214,6 +214,30 @@ def _required_skills(issue: Issue) -> list[str]:
     return required_skills_for(issue)
 
 
+def custom_skills_in_issue(issue: Issue, user_skills: list[UserSkill]) -> list[str]:
+    """Custom skills the user declared that this issue actually mentions.
+
+    The stored analysis is shared across users, so it only knows the built-in
+    taxonomy. Without this, a skill someone typed themselves could never be
+    required by any issue and would sit in their profile doing nothing.
+
+    Only ever *adds* a match. A self-declared skill never creates a gap,
+    because we have no evidence the issue truly needs it.
+    """
+    custom = [us for us in user_skills if us.skill.category == "other"]
+    if not custom:
+        return []
+    hay = " ".join(
+        [issue.title, issue.body or "", " ".join(str(label) for label in issue.labels or [])]
+    ).lower()
+    found = []
+    for us in custom:
+        name = us.skill.name.lower()
+        if re.search(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9])", hay):
+            found.append(us.skill.name)
+    return found
+
+
 def _skill_map(user_skills: list[UserSkill]) -> dict[str, float]:
     return {us.skill.name: us.confidence for us in user_skills}
 
@@ -227,6 +251,10 @@ def score_issue(
 ) -> Match:
     have = _skill_map(user_skills)
     required = _required_skills(issue)
+    # A custom skill counts only when the issue names it; see the helper.
+    for name in custom_skills_in_issue(issue, user_skills):
+        if name not in required:
+            required.append(name)
     analysis = issue.analysis
     repo = issue.repository
 
@@ -235,6 +263,8 @@ def score_issue(
     for name in required:
         sd = skills_mod.BY_NAME.get(name)
         # Core technologies count double; "Git" shouldn't weigh as much as "Django".
+        # A custom skill is unknown to the taxonomy, so it gets the ordinary
+        # weight rather than being treated as core on the user's say-so.
         weight = 2.0 if sd and sd.category in (
             skills_mod.CATEGORY_LANGUAGE, skills_mod.CATEGORY_FRAMEWORK
         ) else 1.0

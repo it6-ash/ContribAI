@@ -153,30 +153,91 @@ def persist_skills(
     db.flush()
 
 
-def add_self_reported(db: Session, user: User, names: list[str]) -> None:
-    for name in names:
-        canonical = skills_mod._canonical(name) or name
-        if canonical not in skills_mod.BY_NAME:
+# What a self-reported level is worth. Deliberately topped out below the 0.75
+# that GitHub evidence needs to read as "advanced": a claimed skill must never
+# outrank a demonstrated one, or the whole evidence-based premise is decorative.
+SELF_REPORTED_CONFIDENCE = {
+    "beginner": 0.30,
+    "intermediate": 0.50,
+    "advanced": 0.70,
+}
+MAX_CUSTOM_SKILLS = 20
+_CUSTOM_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 +#._/-]{0,39}$")
+
+
+def normalize_skill_name(raw: str) -> str | None:
+    """Clean a user-typed skill name, or None if it is not usable.
+
+    This is a trust boundary: the string reaches the database and later the
+    LLM prompts, so it gets length-capped and character-restricted here rather
+    than anywhere downstream.
+    """
+    name = re.sub(r"\s+", " ", (raw or "").strip())
+    if not name or not _CUSTOM_NAME.match(name):
+        return None
+    return name
+
+
+def add_self_reported(
+    db: Session, user: User, entries: list[tuple[str, str]]
+) -> dict[str, list[str]]:
+    """Record skills the user claims, at the level they claim.
+
+    Anything outside the built-in taxonomy is kept as a custom skill rather
+    than dropped. Silently discarding what someone typed is worse than not
+    offering the field: they think it registered.
+    """
+    added, rejected = [], []
+    custom_count = sum(
+        1 for us in load_user_skills(db, user) if us.skill.category == "other"
+    )
+
+    for raw, level in entries:
+        name = normalize_skill_name(raw)
+        if not name:
+            rejected.append(raw)
             continue
-        skill = _get_or_create_skill(db, canonical)
+
+        canonical = skills_mod._canonical(name)
+        if canonical:
+            skill = _get_or_create_skill(db, canonical)
+        else:
+            if custom_count >= MAX_CUSTOM_SKILLS:
+                rejected.append(name)
+                continue
+            skill = db.scalar(select(Skill).where(func.lower(Skill.name) == name.lower()))
+            if skill is None:
+                skill = Skill(name=name, category="other")
+                db.add(skill)
+                db.flush()
+                custom_count += 1
+
+        confidence = SELF_REPORTED_CONFIDENCE.get(level, SELF_REPORTED_CONFIDENCE["intermediate"])
         row = db.scalar(
             select(UserSkill).where(
                 UserSkill.user_id == user.id, UserSkill.skill_id == skill.id
             )
         )
         if row:
-            row.confidence = max(row.confidence, 0.45)
+            # Never lower a confidence that GitHub evidence produced.
+            if row.source == "self_reported" or confidence > row.confidence:
+                row.confidence = confidence if row.source == "self_reported" else row.confidence
+                row.evidence = [f"self-reported: {level}"]
+                row.source = "self_reported" if row.source == "self_reported" else row.source
         else:
             db.add(
                 UserSkill(
                     user_id=user.id,
                     skill_id=skill.id,
-                    confidence=0.45,
-                    evidence=["self-reported during onboarding"],
+                    confidence=confidence,
+                    evidence=[f"self-reported: {level}"],
                     source="self_reported",
                 )
             )
+        added.append(skill.name)
+
     db.flush()
+    return {"added": added, "rejected": rejected}
 
 
 def load_user_skills(db: Session, user: User) -> list[UserSkill]:

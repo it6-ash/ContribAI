@@ -335,10 +335,17 @@ def update_profile(
         user.mode = payload.mode
     if payload.interests is not None:
         user.interests = [i.strip() for i in payload.interests if i.strip()][:12]
+    rejected: list[str] = []
     if payload.skills:
-        services.add_self_reported(db, user, payload.skills)
+        entries = [
+            (s, "intermediate") if isinstance(s, str) else (s.name, s.level)
+            for s in payload.skills
+        ]
+        rejected = services.add_self_reported(db, user, entries)["rejected"]
     db.commit()
-    return get_profile(user=user, db=db)
+    out = get_profile(user=user, db=db)
+    out.rejected_skills = rejected
+    return out
 
 
 # --------------------------------------------------------------------------

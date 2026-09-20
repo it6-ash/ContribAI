@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -33,14 +35,33 @@ class ProfileOut(BaseModel):
     user: UserOut
     skills: list[SkillOut]
     skills_by_category: dict[str, list[SkillOut]]
+    # Names we could not store, so the UI can say so instead of appearing to
+    # accept them. Empty on every read.
+    rejected_skills: list[str] = []
+
+
+class SelfReportedSkill(BaseModel):
+    """A skill the user claims, at the level they claim it.
+
+    `name` may be outside the built-in taxonomy: anything typed is kept as a
+    custom skill rather than dropped, because silently discarding what someone
+    entered is worse than not offering the field.
+    """
+
+    name: str = Field(min_length=1, max_length=40)
+    level: Literal["beginner", "intermediate", "advanced"] = "intermediate"
 
 
 class ProfileUpdate(BaseModel):
     experience_level: str | None = None
     mode: str | None = None
     interests: list[str] | None = None
-    skills: list[str] | None = Field(
-        default=None, description="Self-reported skill names; merged with GitHub evidence."
+    # Bare strings stay accepted so older clients keep working; they default to
+    # intermediate.
+    skills: list[SelfReportedSkill] | list[str] | None = Field(
+        default=None,
+        max_length=60,
+        description="Self-reported skills, merged with (never overriding) GitHub evidence.",
     )
 
 
