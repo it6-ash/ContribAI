@@ -78,11 +78,71 @@ html {
   border-radius: 4px;
 }
 
-/* One radius system: 10px containers, 4px inline chips, full on pills. */
+/* Depth. Everything was one flat fill on another flat fill, which is what made
+   the whole thing read as an admin panel. Surfaces now carry a top-edge
+   highlight and a tinted shadow, the way a real raised plane does. */
 .panel {
-  background: var(--surface);
+  position: relative;
+  background: linear-gradient(180deg, #13161f 0%, var(--surface) 62%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 12px 32px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* Ambient light source. Fixed and non-interactive so it never repaints on
+   scroll; a gradient inside a scrolling container destroys mobile FPS. */
+.glow-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 40rem at 18% -8%, rgba(91, 156, 255, 0.11), transparent 62%),
+    radial-gradient(44rem 30rem at 92% 6%, rgba(91, 156, 255, 0.06), transparent 60%);
+}
+
+/* Blueprint grid, very low contrast. Gives the dark plane a surface. */
+.grid-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(70% 55% at 50% 0%, #000 0%, transparent 78%);
+}
+
+/* Display type. The old page topped out around 15px, so nothing ever felt
+   like a headline. */
+.display {
+  font-size: clamp(2.6rem, 7vw, 5.4rem);
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+}
+
+.display-sm {
+  font-size: clamp(1.75rem, 3.4vw, 2.9rem);
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+
+.text-gradient {
+  background: linear-gradient(180deg, var(--foreground) 32%, #8b93a8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Numbers that animate should not reflow their neighbours as digits change. */
+.tnum {
+  font-variant-numeric: tabular-nums;
 }
 
 .panel-2 {
