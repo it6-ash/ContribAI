@@ -77,22 +77,62 @@ _TIER_FLOORS = ((0.82, "exemplary"), (0.64, "welcoming"), (0.44, "workable"), (0
 SCALE_TIERS = ("small", "medium", "large", "very_large")
 
 
+# Owners whose repositories carry corporate or foundation process regardless of
+# how popular the project is: a contributor licence agreement, review by an
+# internal team on their own schedule, and often internal-first development
+# where an outside pull request waits behind the roadmap.
+#
+# This is the signal stars miss. microsoft/apm has under 4,000 stars, which
+# scored it "medium" and produced a beginner-ish rating, while in practice a
+# first-time outside contributor there faces more process than they would in a
+# 40,000-star community project.
+GATED_OWNERS = frozenset({
+    "microsoft", "google", "googleapis", "googlecloudplatform", "apple", "amzn",
+    "aws", "awslabs", "meta", "facebook", "facebookresearch", "netflix", "uber",
+    "airbnb", "ibm", "oracle", "intel", "nvidia", "adobe", "salesforce",
+    "linkedin", "twitter", "spotify", "shopify", "stripe", "cloudflare",
+    "elastic", "hashicorp", "redhat", "canonical", "mozilla", "dotnet",
+    "azure", "apache", "eclipse", "cncf", "kubernetes", "openai", "anthropics",
+    "tensorflow", "pytorch", "angular", "vuejs", "nodejs", "denoland",
+    "rust-lang", "golang", "python", "llvm", "grafana", "datadog", "sentry",
+})
+
+
+def is_gated_owner(repo: Repository | None) -> bool:
+    return bool(repo) and (repo.owner or "").lower() in GATED_OWNERS
+
+
 def repo_scale(repo: Repository | None) -> str:
     if not repo:
         return "medium"
     stars = repo.stars or 0
     contributors = repo.contributors or 0
+
     if stars >= 50_000 or contributors >= 500:
-        return "very_large"
-    if stars >= 15_000 or contributors >= 150:
-        return "large"
-    if stars >= 3_000 or contributors >= 40:
-        return "medium"
-    return "small"
+        scale = "very_large"
+    elif stars >= 15_000 or contributors >= 150:
+        scale = "large"
+    elif stars >= 3_000 or contributors >= 40:
+        scale = "medium"
+    else:
+        scale = "small"
+
+    # Corporate and foundation ownership sets a floor. The process cost is
+    # there whether the project has 4,000 stars or 400,000.
+    if is_gated_owner(repo):
+        order = list(SCALE_TIERS)
+        scale = max(scale, "large", key=order.index)
+    return scale
 
 
 # Added to the difficulty rank. Onboarding cost, not code complexity.
 _SCALE_PENALTY = {"small": 0.0, "medium": 0.15, "large": 0.55, "very_large": 0.9}
+
+_GATED_NOTE = (
+    "{owner} repositories require a contributor licence agreement and are "
+    "reviewed by an internal team, so a first outside pull request takes longer "
+    "than the change itself suggests."
+)
 
 _SCALE_NOTE = {
     "large": "Large project: expect a contributor agreement, a slower first review, and a codebase you will not hold in your head.",
@@ -426,7 +466,9 @@ def difficulty_for(issue: Issue, required: list[str], clarity: float) -> tuple[s
     if penalty:
         rank += penalty
         reasons.append(
-            f"{scale.replace('_', ' ')} project, so onboarding costs more than the change itself"
+            f"{issue.repository.owner} is a gated owner, so process costs more than the change itself"
+            if is_gated_owner(repo)
+            else f"{scale.replace('_', ' ')} project, so onboarding costs more than the change itself"
         )
 
     # A beginner label is the maintainer's view from inside the project. In a
@@ -474,9 +516,12 @@ def analyze_issue(issue: Issue, *, use_llm: bool = True) -> IssueInsight:
     learning = 0.4 + 0.1 * min(len(concepts), 3) + (0.2 if difficulty != "beginner" else 0.0)
 
     questions = list(clarity_notes)
-    scale_note = _SCALE_NOTE.get(repo_scale(issue.repository))
-    if scale_note:
-        questions.insert(0, scale_note)
+    if is_gated_owner(issue.repository):
+        questions.insert(0, _GATED_NOTE.format(owner=issue.repository.owner))
+    else:
+        scale_note = _SCALE_NOTE.get(repo_scale(issue.repository))
+        if scale_note:
+            questions.insert(0, scale_note)
     if not files:
         questions.append("No obvious source files identified from the issue text")
     if issue.assignee:

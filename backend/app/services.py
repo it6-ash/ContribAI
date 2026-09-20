@@ -449,6 +449,12 @@ async def _enrich_repository(client: GitHubClient, repo: Repository) -> None:
     """Community health + directory tree. Best-effort: a failure here degrades the
     recommendation's confidence, it does not break discovery."""
     try:
+        # Never populated before this: 0 of 91 live repositories had a count,
+        # so half the scale signal was dead and only stars were deciding.
+        repo.contributors = await client.contributor_count(repo.owner, repo.name)
+    except Exception as exc:  # noqa: BLE001
+        log.info("contributor count unavailable for %s: %s", repo.full_name, exc)
+    try:
         community = await client.community_profile(repo.owner, repo.name)
         files = community.get("files") or {}
         repo.has_contributing = bool(files.get("contributing"))

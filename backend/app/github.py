@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -173,6 +174,28 @@ class GitHubClient:
 
     async def repo(self, owner: str, name: str) -> dict | None:
         return await self.get(f"/repos/{owner}/{name}", ttl=3600)
+
+    async def contributor_count(self, owner: str, name: str) -> int:
+        """Total contributors, via the pagination Link header.
+
+        Asking for one per page and reading `rel="last"` costs a single request
+        instead of walking every page. Repos with a single contributor send no
+        Link header at all, hence the fallback.
+        """
+        url = f"{API}/repos/{owner}/{name}/contributors"
+        params = {"per_page": "1", "anon": "1"}
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(url, headers=self._headers(), params=params)
+        if resp.status_code != 200:
+            return 0
+        link = resp.headers.get("link", "")
+        match = re.search(r'[?&]page=(\d+)>;\s*rel="last"', link)
+        if match:
+            return int(match.group(1))
+        try:
+            return len(resp.json() or [])
+        except ValueError:
+            return 0
 
     async def community_profile(self, owner: str, name: str) -> dict:
         return await self.get(f"/repos/{owner}/{name}/community/profile", ttl=86400) or {}

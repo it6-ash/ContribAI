@@ -65,3 +65,44 @@ def test_paperwork_does_not_make_a_monorepo_approachable(db):
     repo.stars, repo.contributors = 95_000, 900
     huge = matching._accessibility(repo, repo_health(repo))
     assert huge < small, "CONTRIBUTING.md does not offset a 95k-star codebase"
+
+
+def test_corporate_ownership_outranks_a_low_star_count():
+    """Reported: microsoft/apm kept surfacing as an easy first contribution.
+
+    It has under 4,000 stars, which scored "medium" on popularity alone, while
+    a first-time outside contributor there faces a CLA and internal review.
+    """
+    from app.analysis import is_gated_owner
+
+    ms = _repo(owner="microsoft", name="apm", stars=3_855)
+    indie = _repo(owner="someone", name="apm", stars=3_855)
+
+    assert is_gated_owner(ms) and not is_gated_owner(indie)
+    assert repo_scale(ms) == "large"
+    assert repo_scale(indie) == "medium"
+
+
+def test_a_gated_owner_never_produces_a_beginner_rating():
+    issue = _issue(_repo(owner="microsoft", name="apm", stars=3_855), ["good first issue"])
+    level, why = difficulty_for(issue, ["Python"], 0.85)
+    assert level != "beginner"
+    assert "gated owner" in why
+
+
+def test_popularity_can_still_exceed_the_gated_floor():
+    """Gating sets a floor, not a ceiling: a huge corporate repo is still huge."""
+    assert repo_scale(_repo(owner="google", name="x", stars=120_000)) == "very_large"
+
+
+def test_the_cla_cost_is_stated_not_just_priced_in(db):
+    from sqlalchemy import select
+
+    from app.analysis import analyze_issue
+    from app.models import Repository as R
+
+    repo = db.scalar(select(R).where(R.name == "vela"))
+    repo.owner = "microsoft"
+    issue = db.scalars(select(Issue).where(Issue.repository_id == repo.id)).first()
+    insight = analyze_issue(issue, use_llm=False)
+    assert any("contributor licence agreement" in q for q in insight.open_questions)

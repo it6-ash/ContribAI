@@ -28,3 +28,9 @@ def init_db() -> None:
     from . import models  # noqa: F401  (registers mappers before create_all)
 
     Base.metadata.create_all(engine)
+
+    # create_all only creates missing tables; a column added to an existing
+    # model is silently absent until something queries it and dies.
+    from .schema_sync import sync_columns
+
+    sync_columns(engine)
