@@ -1,5 +1,6 @@
 import type {
   Health,
+  Level,
   Issue,
   Plan,
   Profile,
@@ -73,7 +74,9 @@ export const api = {
     experience_level?: string;
     mode?: string;
     interests?: string[];
-    skills?: string[];
+    // Objects carry the user's claimed level; bare strings still work and
+    // default to intermediate server-side.
+    skills?: Array<{ name: string; level: Level } | string>;
   }) => request<Profile>("/profile", { method: "PUT", body: JSON.stringify(payload) }),
 
   recommendations: (limit = 6, refresh = false) =>

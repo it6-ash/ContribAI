@@ -28,12 +28,12 @@ export function TopPick({ rec }: { rec: Recommendation }) {
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(38rem 18rem at 0% 0%, rgba(91,156,255,0.10), transparent 70%)",
+            "radial-gradient(38rem 18rem at 0% 0%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%)",
         }}
       />
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="rounded-full bg-accent px-2.5 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-[#06070a]">
+        <span className="rounded-full bg-accent px-2.5 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-on-accent">
           Start here
         </span>
         <span className="inline-flex items-center gap-1.5 font-mono text-[12.5px] text-muted">
@@ -126,7 +126,7 @@ export function TopPick({ rec }: { rec: Recommendation }) {
       <div className="mt-7 flex flex-wrap items-center gap-3 border-t border-line pt-6">
         <Link
           href={`/workspace/${issue.id}`}
-          className="group inline-flex items-center gap-2 rounded-[10px] bg-accent px-5 py-2.5 text-[14px] font-medium text-[#06070a]"
+          className="group inline-flex items-center gap-2 rounded-[10px] bg-accent px-5 py-2.5 text-[14px] font-medium text-on-accent"
         >
           Start contributing
           <ArrowRight size={14} weight="bold" className="transition-transform group-hover:translate-x-0.5" />

@@ -26,6 +26,9 @@ export interface Profile {
   user: User;
   skills: Skill[];
   skills_by_category: Record<string, Skill[]>;
+  /** Names the server could not store, so the UI can say so rather than
+   *  appearing to have accepted them. */
+  rejected_skills?: string[];
 }
 
 export interface RepoHealth {

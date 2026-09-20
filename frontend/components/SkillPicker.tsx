@@ -127,7 +127,7 @@ export function SkillPicker({
                       onClick={() => setLevel(p.name, lvl)}
                       className={`px-2.5 py-1 font-mono text-[11px] transition-colors ${
                         p.level === lvl
-                          ? "bg-accent text-[#06070a]"
+                          ? "bg-accent text-on-accent"
                           : "text-muted hover:text-foreground"
                       }`}
                     >

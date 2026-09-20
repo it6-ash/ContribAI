@@ -127,7 +127,7 @@ export function AskAI({ issueId }: { issueId: number }) {
         <button
           type="submit"
           disabled={busy || !value.trim()}
-          className="shrink-0 rounded-[10px] bg-accent p-2 text-[#06070a] transition-opacity disabled:opacity-40"
+          className="shrink-0 rounded-[10px] bg-accent p-2 text-on-accent transition-opacity disabled:opacity-40"
           aria-label="Send question"
         >
           <PaperPlaneRight size={15} weight="bold" />

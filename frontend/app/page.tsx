@@ -44,7 +44,7 @@ export default function Home() {
             <div className="mt-10 flex flex-wrap gap-3">
               <Link
                 href="/onboarding"
-                className="group inline-flex items-center gap-2 rounded-[10px] bg-accent px-6 py-3 text-[14.5px] font-medium text-[#06070a] transition-transform active:translate-y-px"
+                className="group inline-flex items-center gap-2 rounded-[10px] bg-accent px-6 py-3 text-[14.5px] font-medium text-on-accent transition-transform active:translate-y-px"
               >
                 Get started
                 <ArrowRight
@@ -187,7 +187,7 @@ export default function Home() {
           </p>
           <Link
             href="/onboarding"
-            className="group mt-10 inline-flex items-center gap-2 rounded-[10px] bg-accent px-6 py-3 text-[14.5px] font-medium text-[#06070a] transition-transform active:translate-y-px"
+            className="group mt-10 inline-flex items-center gap-2 rounded-[10px] bg-accent px-6 py-3 text-[14.5px] font-medium text-on-accent transition-transform active:translate-y-px"
           >
             Get started
             <ArrowRight

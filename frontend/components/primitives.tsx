@@ -113,7 +113,7 @@ export function Button({
   // Near-black label on the blue accent clears WCAG AA comfortably.
   const style =
     variant === "primary"
-      ? "bg-accent text-[#06070a] hover:bg-accent/90"
+      ? "bg-accent text-on-accent hover:bg-accent/90"
       : "border border-line bg-surface text-foreground hover:border-muted/50";
   const cls = `${base} ${style} ${className}`;
 

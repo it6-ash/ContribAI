@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { User } from "@/lib/types";
+import { ThemeToggle } from "./ThemeToggle";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -46,6 +47,7 @@ export function Nav() {
         ) : null}
 
         <div className="ml-auto flex items-center gap-3">
+          <ThemeToggle />
           {user ? (
             <>
               <span className="font-mono text-[12px] text-muted">

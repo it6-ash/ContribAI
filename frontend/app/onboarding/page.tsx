@@ -6,6 +6,7 @@ import { ArrowRight, GithubLogo } from "@phosphor-icons/react/dist/ssr";
 import { api, ApiError } from "@/lib/api";
 import { Nav } from "@/components/Nav";
 import { Button, ErrorState, Skeleton } from "@/components/primitives";
+import { SkillPicker, type PickedSkill } from "@/components/SkillPicker";
 import type { Health, Taxonomy, User } from "@/lib/types";
 
 const EXPERIENCE: Array<[string, string, string]> = [
@@ -38,7 +39,7 @@ function OnboardingInner() {
 
   const [experience, setExperience] = useState("developer");
   const [mode, setMode] = useState("developer_match");
-  const [skills, setSkills] = useState<Set<string>>(new Set());
+  const [skills, setSkills] = useState<PickedSkill[]>([]);
   // Set once the GitHub OAuth callback has redirected back here signed in.
   const [githubUser, setGithubUser] = useState<User | null>(null);
 
@@ -65,7 +66,7 @@ function OnboardingInner() {
       await api.updateProfile({
         experience_level: experience,
         mode,
-        skills: [...skills],
+        skills,
       });
       // Reads repositories, manifests and merged PRs. Slow, so it gets its own
       // step with visible progress rather than happening behind a spinner.
@@ -87,7 +88,7 @@ function OnboardingInner() {
       await api.updateProfile({
         experience_level: experience,
         mode,
-        skills: [...skills],
+        skills,
       });
       router.push("/dashboard");
     } catch (err) {
@@ -183,36 +184,9 @@ function OnboardingInner() {
             are marked self-reported and weighted below GitHub evidence.
           </p>
           {taxonomy ? (
-            <div className="flex flex-wrap gap-1.5">
-              {Object.values(taxonomy.skills)
-                .flat()
-                .map((name) => {
-                  const on = skills.has(name);
-                  return (
-                    <button
-                      key={name}
-                      onClick={() =>
-                        setSkills((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(name)) next.delete(name);
-                          else next.add(name);
-                          return next;
-                        })
-                      }
-                      aria-pressed={on}
-                      className={`rounded border px-2 py-1 font-mono text-[11.5px] transition-colors ${
-                        on
-                          ? "border-accent/50 bg-accent/10 text-accent"
-                          : "border-line text-muted hover:border-muted/50"
-                      }`}
-                    >
-                      {name}
-                    </button>
-                  );
-                })}
-            </div>
+            <SkillPicker taxonomy={taxonomy} picked={skills} onChange={setSkills} />
           ) : (
-            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-40 w-full" />
           )}
         </section>
 
