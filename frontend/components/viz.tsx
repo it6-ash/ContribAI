@@ -231,11 +231,11 @@ export function FilterFunnel({
   return (
     <div className="viz">
       <div className="flex items-baseline justify-between gap-4">
-        <h3 className="text-[13px] font-medium">
-          {analyzed} issues analysed
-          <span className="ml-2 font-mono text-[12px] text-muted">
-            {strong} strong · {passed - strong} viable · {analyzed - passed} filtered out
-          </span>
+        <h3 className="text-[13.5px] leading-relaxed">
+          We looked at <strong className="font-semibold">{analyzed}</strong> open issues,
+          ruled out <strong className="font-semibold">{analyzed - passed}</strong>, and
+          found <strong className="font-semibold text-accent">{strong}</strong> that are
+          a strong fit for you.
         </h3>
       </div>
 

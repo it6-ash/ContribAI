@@ -41,7 +41,7 @@ export function IssueCard({
               </span>
             ) : null}
           </div>
-          <h3 className="mt-1.5 text-[16px] font-semibold leading-snug tracking-tight">
+          <h3 className="mt-1.5 max-w-[52ch] text-[16px] font-semibold leading-snug tracking-tight">
             <Link href={`/issues/${issue.id}`} className="hover:text-accent">
               {issue.title}
             </Link>

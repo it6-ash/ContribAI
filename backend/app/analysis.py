@@ -425,7 +425,7 @@ def analyze_issue(issue: Issue, *, use_llm: bool = True) -> IssueInsight:
         questions.append("A pull request already references this issue")
 
     insight = IssueInsight(
-        summary=_fallback_summary(issue, difficulty),
+        summary=_fallback_summary(issue, difficulty, required, files, clarity),
         problem_description=_plain(issue.body or issue.title),
         why_it_matters=_fallback_impact(issue, labels),
         difficulty=difficulty,
@@ -450,10 +450,31 @@ def analyze_issue(issue: Issue, *, use_llm: bool = True) -> IssueInsight:
     return insight
 
 
-def _fallback_summary(issue: Issue, difficulty: str) -> str:
+def _fallback_summary(issue: Issue, difficulty: str, required: list[str], files: list[str],
+                     clarity: float) -> str:
+    """One line that adds to the title rather than repeating it.
+
+    This lands directly under the headline on the dashboard, where restating
+    the title wastes the most prominent line on the page. Say what kind of work
+    it is and how well specified it is instead.
+    """
     repo = issue.repository.full_name if issue.repository else "the repository"
     article = "an" if difficulty[0] in "aeiou" else "a"
-    return f"{issue.title.strip()}: {article} {difficulty} change in {repo}."
+    tech = [s for s in required if skills_mod.BY_NAME[s].category in (
+        skills_mod.CATEGORY_LANGUAGE, skills_mod.CATEGORY_FRAMEWORK,
+        skills_mod.CATEGORY_DATA, skills_mod.CATEGORY_INFRA)][:3]
+
+    parts = [f"{article.capitalize()} {difficulty}-level change in {repo}"]
+    if tech:
+        parts[0] += f", in {', '.join(tech)}"
+    parts[0] += "."
+
+    if files:
+        named = "names the file to start from" if len(files) == 1 else f"points at {len(files)} likely files"
+        parts.append(f"The issue {named}.")
+    elif clarity < 0.4:
+        parts.append("The issue is thin on detail, so expect to locate the code yourself.")
+    return " ".join(parts)
 
 
 def _fallback_impact(issue: Issue, labels: set[str]) -> str:

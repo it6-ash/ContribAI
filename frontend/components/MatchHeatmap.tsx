@@ -13,15 +13,17 @@ import { SCORE_DOMAIN, SEQ, seqStep, useTooltip } from "./viz";
  *  Sequential ramp, one hue: these cells are all the same measure (0-1), so
  *  identity colour would be wrong here.
  */
+// Abbreviated headers ("Diff", "Access", "Learn") were unreadable: nothing on
+// the page said what they meant. Each column now states its question.
 const DIMENSIONS: Array<[key: string, short: string, full: string]> = [
-  ["skill_match", "Skill", "Skill match"],
-  ["difficulty_match", "Diff", "Difficulty fit"],
-  ["technology_match", "Tech", "Technology match"],
-  ["repository_accessibility", "Access", "Repository accessibility"],
-  ["issue_clarity", "Clarity", "Issue clarity"],
-  ["effort_fit", "Effort", "Effort fit"],
-  ["learning_value", "Learn", "Learning value"],
-  ["repository_activity", "Active", "Repository activity"],
+  ["skill_match", "Skills", "Do you already have the skills this needs?"],
+  ["difficulty_match", "Level", "Is the difficulty right for your experience?"],
+  ["technology_match", "Stack", "Is it built with technologies you use?"],
+  ["repository_accessibility", "Welcoming", "Does the project help newcomers contribute?"],
+  ["issue_clarity", "Clarity", "Is the issue clearly described?"],
+  ["effort_fit", "Time", "Does the effort fit what you have?"],
+  ["learning_value", "Learning", "Would you learn something worthwhile?"],
+  ["repository_activity", "Alive", "Is the repository actively maintained?"],
 ];
 
 export function MatchHeatmap({ recs }: { recs: Recommendation[] }) {
@@ -32,7 +34,9 @@ export function MatchHeatmap({ recs }: { recs: Recommendation[] }) {
   return (
     <div className="viz panel overflow-hidden">
       <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line px-5 py-3.5">
-        <h3 className="text-[13.5px] font-medium">Where each match is strong</h3>
+        <h3 className="text-[13.5px] font-medium">
+          Compare every match, side by side
+        </h3>
         <div className="flex items-center gap-2 font-mono text-[11px] text-muted">
           <span>{Math.round(SCORE_DOMAIN[0] * 100)}</span>
           <span className="flex gap-[2px]">
@@ -59,7 +63,7 @@ export function MatchHeatmap({ recs }: { recs: Recommendation[] }) {
                   key={key}
                   scope="col"
                   title={full}
-                  className="px-1 pb-2 text-center font-mono text-[10.5px] font-normal text-muted"
+                  className="px-1 pb-2 text-center text-[11px] font-normal text-muted"
                 >
                   {short}
                 </th>
@@ -84,8 +88,8 @@ export function MatchHeatmap({ recs }: { recs: Recommendation[] }) {
                 }
                 className="cursor-pointer transition-colors hover:bg-surface-2"
               >
-                <th scope="row" className="max-w-[240px] px-5 py-1.5 text-left font-normal">
-                  <span className="block truncate text-[12.5px]">
+                <th scope="row" className="max-w-[260px] px-5 py-2 text-left font-normal">
+                  <span className="line-clamp-2 block text-[12.5px] leading-snug">
                     {rec.issue.title}
                   </span>
                   <span className="block truncate font-mono text-[10.5px] text-muted">
@@ -131,7 +135,8 @@ export function MatchHeatmap({ recs }: { recs: Recommendation[] }) {
       </div>
 
       <p className="border-t border-line px-5 py-2.5 text-[11.5px] text-muted">
-        Each cell is one weighted dimension, 0 to 100. Click a row to open the issue.
+        Darker means stronger. Hover any square for the exact score, or click a row
+        to open the issue.
       </p>
     </div>
   );
