@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 .venv/
 *.db
+# SQLite runtime artefacts. `*.db` does not match these, so a journal was
+# tracked and pushed before this line existed.
+*.db-journal
+*.db-wal
+*.db-shm
 .pytest_cache/
 
 # node
