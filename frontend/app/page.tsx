@@ -22,8 +22,6 @@ const DIMENSIONS: Array<[string, number]> = [
 export default function Home() {
   return (
     <>
-      <div className="glow-field" aria-hidden="true" />
-      <div className="grid-field" aria-hidden="true" />
       <Nav />
 
       <main className="mx-auto w-full max-w-[1400px] flex-1 px-6">
@@ -50,7 +48,6 @@ export default function Home() {
                 <ArrowRight
                   size={15}
                   weight="bold"
-                  className="transition-transform group-hover:translate-x-0.5"
                 />
               </Link>
               <Link
@@ -129,20 +126,14 @@ export default function Home() {
                 it take? Answering needs both sides modelled.
               </p>
 
-              <Reveal className="mt-10 grid grid-cols-3 gap-6" stagger={0.09}>
-                {[
-                  [23, "", "issues analysed"],
-                  [8, "", "scored dimensions"],
-                  [0, "", "model calls to rank"],
-                ].map(([n, suffix, label]) => (
-                  <div key={label as string}>
-                    <div className="font-mono text-[40px] leading-none tracking-tight text-accent">
-                      <CountUp to={n as number} suffix={suffix as string} />
-                    </div>
-                    <p className="mt-2 text-[13px] leading-snug text-muted">{label}</p>
-                  </div>
-                ))}
-              </Reveal>
+              <p className="mt-10 max-w-[56ch] text-[15px] leading-relaxed text-muted">
+                Eight weighted dimensions decide the ranking, and{" "}
+                <span className="font-mono text-foreground">
+                  <CountUp to={0} />
+                </span>{" "}
+                model calls are involved in producing it. The language model only
+                writes about a ranking it was handed.
+              </p>
             </div>
           </div>
         </section>
@@ -159,13 +150,20 @@ export default function Home() {
           <h2 className="display-sm max-w-[22ch] text-gradient">
             Facts and inferences never share a line.
           </h2>
-          <Reveal className="mt-12 grid gap-px overflow-hidden rounded-[12px] border border-line bg-line md:grid-cols-3">
+          {/* Was three equal cards in a row, the reflex grid. This is a
+              definition list, which is what the content actually is. */}
+          <Reveal className="mt-10 divide-y divide-line border-y border-line">
             {EVIDENCE.map(([kind, line]) => (
-              <div key={kind} className="bg-surface p-7">
-                <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-accent">
+              <div
+                key={kind}
+                className="grid gap-x-8 gap-y-2 py-5 md:grid-cols-[9rem_1fr]"
+              >
+                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
                   {kind}
                 </span>
-                <p className="mt-4 text-[15px] leading-relaxed text-muted">{line}</p>
+                <p className="max-w-[62ch] text-[15px] leading-relaxed text-muted">
+                  {line}
+                </p>
               </div>
             ))}
           </Reveal>
@@ -193,7 +191,7 @@ export default function Home() {
             <ArrowRight
               size={15}
               weight="bold"
-              className="transition-transform group-hover:translate-x-0.5"
+             
             />
           </Link>
         </section>
@@ -204,14 +202,22 @@ export default function Home() {
           <p className="text-[13px] text-muted">
             Fit scores and effort estimates are internal heuristics, not guarantees.
           </p>
-          <a
-            href="https://github.com/it6-ash/ContribAI"
-            className="text-[13px] text-muted hover:text-foreground"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source
-          </a>
+          <nav className="flex items-center gap-5 text-[13px]">
+            <Link href="/privacy" className="text-muted hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="text-muted hover:text-foreground">
+              Terms
+            </Link>
+            <a
+              href="https://github.com/it6-ash/ContribAI"
+              className="text-muted hover:text-foreground"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Source
+            </a>
+          </nav>
         </div>
       </footer>
     </>

@@ -243,7 +243,7 @@ function OnboardingInner() {
                   @{name}
                   <ArrowRight
                     size={14}
-                    className="text-muted transition-transform group-hover:translate-x-0.5"
+                    className="text-muted"
                   />
                 </span>
                 <span className="mt-1.5 block text-[13px] leading-relaxed text-muted">

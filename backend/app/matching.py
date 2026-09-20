@@ -472,32 +472,32 @@ def explain(
     out: list[str] = []
     for m in match.matched_skills[:4]:
         level = "strong" if m["confidence"] >= 0.7 else "working"
-        out.append(f"✓ {m['skill']}: {level} evidence in your GitHub history")
+        out.append(f"{m['skill']}: {level} evidence in your GitHub history")
     if not match.matched_skills:
-        out.append("△ None of the required skills appear in your GitHub evidence yet")
+        out.append("None of the required skills appear in your GitHub evidence yet")
     d = match.dimensions
     if d["difficulty_match"] >= 0.7:
-        out.append(f"✓ {difficulty.capitalize()} difficulty fits your current level")
+        out.append(f"{difficulty.capitalize()} difficulty fits your current level")
     elif d["difficulty_match"] >= 0.35:
-        out.append(f"△ {difficulty.capitalize()} is a stretch from your current level")
+        out.append(f"{difficulty.capitalize()} is a stretch from your current level")
     else:
-        out.append(f"△ {difficulty.capitalize()} is well beyond your stated level")
+        out.append(f"{difficulty.capitalize()} is well beyond your stated level")
     if d["issue_clarity"] >= 0.6:
-        out.append("✓ Issue is clearly specified")
+        out.append("Issue is clearly specified")
     else:
-        out.append("△ Issue is thin on detail, expect discovery work")
+        out.append("Issue is thin on detail, expect discovery work")
     if prior_reason:
-        out.append(f"{'✓' if prior >= 0.45 else '△'} {prior_reason}")
+        out.append(prior_reason)
     if health:
-        out.append(f"✓ Repository is {health.tier} for newcomers")
+        out.append(f"Repository is {health.tier} for newcomers")
         if health.activity == "high":
-            out.append(f"✓ Repository is active (last commit {health.days_since_commit}d ago)")
+            out.append(f"Repository is active, last commit {health.days_since_commit}d ago")
         elif health.activity == "low":
-            out.append("△ Repository has been quiet recently")
+            out.append("Repository has been quiet recently")
         if health.has_contributing:
-            out.append("✓ CONTRIBUTING.md present")
+            out.append("CONTRIBUTING.md present")
     for gap in match.skill_gaps[:2]:
-        out.append(f"△ Skill gap: {gap['skill']} (~{gap['learning_hours']:.0f}h to get started)")
+        out.append(f"Skill gap: {gap['skill']}, roughly {gap['learning_hours']:.0f}h to get started")
     return out
 
 

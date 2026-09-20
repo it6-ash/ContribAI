@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowSquareOut, Sparkle } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, ArrowSquareOut } from "@phosphor-icons/react/dist/ssr";
 import { api, ApiError } from "@/lib/api";
 import { Nav } from "@/components/Nav";
 import { IssueExplanation } from "@/components/IssueExplanation";
@@ -128,7 +128,6 @@ export default function IssuePage({ params }: PageProps<"/issues/[id]">) {
                           disabled={explaining}
                           className="inline-flex items-center gap-1.5 text-[13px] text-accent disabled:opacity-50"
                         >
-                          <Sparkle size={13} weight="fill" />
                           {explaining ? "Analysing..." : "Explain in depth"}
                         </button>
                       ) : null

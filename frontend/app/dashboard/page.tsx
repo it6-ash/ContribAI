@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CaretDown } from "@phosphor-icons/react/dist/ssr";
@@ -9,6 +9,7 @@ import { Nav } from "@/components/Nav";
 import { IssueCard } from "@/components/IssueCard";
 import { MatchHeatmap } from "@/components/MatchHeatmap";
 import { LiveBar } from "@/components/LiveBar";
+import { ShortcutHelp, useShortcuts, type Shortcut } from "@/components/Shortcuts";
 import { useLiveCorpus } from "@/components/useLiveCorpus";
 import { TopPick } from "@/components/TopPick";
 import { FilterFunnel } from "@/components/viz";
@@ -73,6 +74,7 @@ export default function DashboardPage() {
   // this tab did not start.
   const live = useLiveCorpus(useCallback(() => load(), [load]));
 
+
   const all = data?.recommendations ?? [];
   const visible = applyFilters(all, filters);
   // Buckets are the editorial shelves; once the reader starts filtering or
@@ -91,6 +93,38 @@ export default function DashboardPage() {
     bucket,
     items: rest.filter((r) => r.bucket === bucket),
   })).filter((g) => g.items.length);
+
+  // The things a returning user does every visit. Single-key, because this is
+  // a triage tool opened daily, not a chorded power feature.
+  const shortcuts: Shortcut[] = useMemo(
+    () => [
+      { keys: ["r"], label: "Refresh from GitHub", run: () => live.refresh() },
+      {
+        keys: ["Enter", "o"],
+        label: "Open the top match",
+        run: () => visible[0] && router.push(`/issues/${visible[0].issue.id}`),
+      },
+      {
+        keys: ["s"],
+        label: "Start contributing to it",
+        run: () => visible[0] && router.push(`/workspace/${visible[0].issue.id}`),
+      },
+      {
+        keys: ["h"],
+        label: "Show how these were ranked",
+        run: () => setShowWorkings((v) => !v),
+      },
+      {
+        keys: ["c"],
+        label: "Clear filters",
+        run: () => setFilters({ ...EMPTY_FILTERS, sort: filters.sort }),
+      },
+      { keys: ["p"], label: "Edit profile", run: () => router.push("/profile") },
+    ],
+    [live, visible, router, filters.sort],
+  );
+  const { helpOpen, setHelpOpen } = useShortcuts(shortcuts);
+
 
   const stats = data?.stats;
   const topSkills = (profile?.skills ?? []).slice(0, 6);
@@ -122,7 +156,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-5">
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
           <LiveBar
             status={live.status}
             busy={live.busy}
@@ -130,7 +164,19 @@ export default function DashboardPage() {
             error={live.error}
             onRefresh={live.refresh}
           />
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="font-mono text-[11px] text-muted hover:text-foreground"
+          >
+            press ? for keys
+          </button>
         </div>
+
+        <ShortcutHelp
+          shortcuts={shortcuts}
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+        />
 
         {topSkills.length ? (
           <div className="mt-6 flex flex-wrap items-center gap-2">

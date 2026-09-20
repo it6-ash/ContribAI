@@ -22,7 +22,7 @@ export function Nav() {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-background/85 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-line bg-background">
       <nav className="mx-auto flex h-16 max-w-[1400px] items-center gap-6 px-6">
         <Link href={user ? "/dashboard" : "/"} className="font-semibold tracking-tight">
           Contrib<span className="text-accent">AI</span>

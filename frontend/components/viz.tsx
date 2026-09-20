@@ -38,7 +38,7 @@ export function useTooltip() {
   const node = tip ? (
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-50 max-w-[280px] rounded-[8px] border border-line bg-surface-2 px-3 py-2 text-[12.5px] leading-relaxed shadow-lg"
+      className="pointer-events-none fixed z-50 max-w-[280px] floating rounded border border-line bg-surface-2 px-3 py-2 text-[12.5px] leading-relaxed"
       style={{
         left: Math.min(tip.x + 14, (globalThis.innerWidth ?? 1400) - 300),
         top: tip.y + 16,

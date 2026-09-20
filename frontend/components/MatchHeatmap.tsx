@@ -103,7 +103,7 @@ export function MatchHeatmap({ recs }: { recs: Recommendation[] }) {
                     <td key={key} className="px-[2px] py-[2px]">
                       {/* 2px gaps in the surface colour separate the cells. */}
                       <div
-                        className="h-8 w-full rounded-[3px] transition-transform hover:scale-[1.06]"
+                        className="h-8 w-full rounded-[3px] transition-opacity hover:opacity-80"
                         style={{ background: seqStep(v, ...SCORE_DOMAIN) }}
                         onMouseMove={(e) =>
                           show(

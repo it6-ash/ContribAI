@@ -19,19 +19,10 @@ export function TopPick({ rec }: { rec: Recommendation }) {
   const coreGaps = rec.skill_gaps.filter((g) => g.severity === "core");
   const ready = Math.round((rec.readiness.overall ?? 0) * 100);
 
+  // A left rule, not a glow behind the card: this block is the answer, and its
+  // weight should come from structure rather than a gradient nobody chose.
   return (
-    <article className="panel relative overflow-hidden p-6 lg:p-8">
-      {/* The one accent wash on the page, so this block reads as the answer
-          and every card below it reads as an alternative. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(38rem 18rem at 0% 0%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%)",
-        }}
-      />
-
+    <article className="panel relative overflow-hidden border-l-2 border-l-accent p-6 lg:p-8">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="rounded-full bg-accent px-2.5 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-on-accent">
           Start here
@@ -129,7 +120,7 @@ export function TopPick({ rec }: { rec: Recommendation }) {
           className="group inline-flex items-center gap-2 rounded-[10px] bg-accent px-5 py-2.5 text-[14px] font-medium text-on-accent"
         >
           Start contributing
-          <ArrowRight size={14} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
+          <ArrowRight size={14} weight="bold" />
         </Link>
         <Link
           href={`/issues/${issue.id}`}
