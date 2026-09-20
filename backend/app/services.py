@@ -120,9 +120,35 @@ async def analyze_github_profile(
     return load_user_skills(db, user)
 
 
+# GitHub owner and repository names: alphanumerics, dot, dash, underscore.
+# Anything else cannot be a real slug, and interpolating it into an API path is
+# how a request walks off /repos onto another endpoint.
+_SLUG_PART = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,98}[A-Za-z0-9_-])?$")
+
+
+def safe_slug(value: str) -> tuple[str, str] | None:
+    """Split "owner/name" only if both halves are real GitHub identifiers.
+
+    Returns None for anything containing a path separator, traversal, query or
+    fragment. Validated here, at the boundary, rather than at each of the four
+    call sites that build a URL from it.
+    """
+    parts = (value or "").strip().split("/")
+    if len(parts) != 2:
+        return None
+    owner, name = parts
+    if not _SLUG_PART.match(owner) or not _SLUG_PART.match(name):
+        return None
+    if owner in (".", "..") or name in (".", ".."):
+        return None
+    return owner, name
+
+
 def _slug_from_url(url: str) -> str:
     match = re.search(r"/repos/([^/]+/[^/]+)$", url or "")
-    return match.group(1) if match else ""
+    if not match:
+        return ""
+    return match.group(1) if safe_slug(match.group(1)) else ""
 
 
 def _recent(pushed_at) -> bool:
@@ -386,10 +412,10 @@ async def discover_issues(
 
 
 async def _upsert_search_result(db: Session, client: GitHubClient, item: dict) -> Issue | None:
-    slug = _slug_from_url(item.get("repository_url", ""))
-    if "/" not in slug:
+    parts = safe_slug(_slug_from_url(item.get("repository_url", "")))
+    if not parts:
         return None
-    owner, name = slug.split("/", 1)
+    owner, name = parts
 
     repo = db.scalar(select(Repository).where(Repository.owner == owner, Repository.name == name))
     if repo is None:
@@ -568,6 +594,8 @@ async def revalidate(db: Session, issues: list[Issue], token: str | None, *, cap
     changed = 0
     for issue in issues[:cap]:
         if issue.is_demo or not issue.repository:
+            continue
+        if not safe_slug(issue.repository.full_name) or issue.number <= 0:
             continue
         try:
             data = await client.get(

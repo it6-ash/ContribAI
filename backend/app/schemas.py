@@ -4,7 +4,7 @@ from datetime import datetime
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SkillOut(BaseModel):
@@ -53,9 +53,11 @@ class SelfReportedSkill(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     experience_level: str | None = None
     mode: str | None = None
-    interests: list[str] | None = None
+    interests: list[str] | None = Field(default=None, max_length=12)
     # Bare strings stay accepted so older clients keep working; they default to
     # intermediate.
     skills: list[SelfReportedSkill] | list[str] | None = Field(
@@ -155,6 +157,8 @@ class PlanOut(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     question: str = Field(min_length=1, max_length=2000)
 
 
@@ -167,18 +171,25 @@ class IngestIssue(BaseModel):
     """Payload accepted by POST /api/ingest/issues.
 
     For loading a curated corpus from a script. The periodic refresh does not use
-    this path; it goes straight through services.run_search_ingest."""
+    this path; it goes straight through services.run_search_ingest.
 
-    repo_full_name: str
-    number: int
-    github_id: int
-    title: str
-    body: str | None = None
-    labels: list[str] = []
-    state: str = "open"
-    assignee: str | None = None
-    comments: int = 0
-    url: str = ""
+    Every field is bounded. Unbounded strings on a write endpoint are a storage
+    denial of service even behind a shared secret, and extra="forbid" means a
+    typo'd field fails loudly instead of being silently dropped.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    repo_full_name: str = Field(max_length=200)
+    number: int = Field(ge=1, le=10_000_000)
+    github_id: int = Field(ge=1)
+    title: str = Field(max_length=1000)
+    body: str | None = Field(default=None, max_length=200_000)
+    labels: list[str] = Field(default=[], max_length=60)
+    state: Literal["open", "closed"] = "open"
+    assignee: str | None = Field(default=None, max_length=120)
+    comments: int = Field(default=0, ge=0)
+    url: str = Field(default="", max_length=500)
     created_at: datetime | None = None
     updated_at: datetime | None = None
     # Repository facts, so the ingest does not need a second GitHub round trip.
@@ -201,6 +212,7 @@ class IngestRequest(BaseModel):
 
 class IngestResponse(BaseModel):
     received: int
+    rejected: int = 0
     repositories_upserted: int
     issues_created: int
     issues_updated: int

@@ -140,6 +140,7 @@ def test_ingest_upserts_issues(client):
     first = client.post("/api/ingest/issues", json=payload, headers=headers).json()
     assert first == {
         "received": 1,
+        "rejected": 0,
         "repositories_upserted": 1,
         "issues_created": 1,
         "issues_updated": 0,

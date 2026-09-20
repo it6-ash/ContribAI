@@ -714,12 +714,16 @@ def ingest_issues(
         raise HTTPException(status_code=401, detail="Invalid ingest token")
 
     repos_touched: set[int] = set()
-    created = updated = analyzed = 0
+    created = updated = analyzed = rejected = 0
 
     for item in payload.issues:
-        if "/" not in item.repo_full_name:
+        parts = services.safe_slug(item.repo_full_name)
+        if not parts:
+            # Reject rather than store: a name that is not a real slug will be
+            # interpolated into a GitHub API path later.
+            rejected += 1
             continue
-        owner, name = item.repo_full_name.split("/", 1)
+        owner, name = parts
         repo = db.scalar(
             select(Repository).where(Repository.owner == owner, Repository.name == name)
         )
@@ -776,6 +780,7 @@ def ingest_issues(
     db.commit()
     return schemas.IngestResponse(
         received=len(payload.issues),
+        rejected=rejected,
         repositories_upserted=len(repos_touched),
         issues_created=created,
         issues_updated=updated,

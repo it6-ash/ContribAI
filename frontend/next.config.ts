@@ -18,6 +18,42 @@ const nextConfig: NextConfig = {
   // Self-contained server bundle, so the runtime image does not need node_modules.
   output: "standalone",
 
+  // The API sets its own headers; these cover the pages the browser renders.
+  // CSP is the one that matters: it is what turns an injected string into an
+  // inert string rather than script.
+  async headers() {
+    const csp = [
+      "default-src 'self'",
+      // Next injects inline bootstrap script and inline styles; 'unsafe-inline'
+      // for style is the documented cost of that. Scripts stay same-origin.
+      "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https://avatars.githubusercontent.com",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+    ].join("; ");
+
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: csp },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "DENY" },
+          {
+            key: "Permissions-Policy",
+            value: "geolocation=(), microphone=(), camera=(), interest-cohort=()",
+          },
+        ],
+      },
+    ];
+  },
+
   async rewrites() {
     return [
       {
