@@ -16,7 +16,27 @@ _connect_args = (
     if _is_sqlite
     else {}
 )
-engine = create_engine(settings.database_url, connect_args=_connect_args, future=True)
+# The default pool (5 + 10 overflow) is thin for an app whose endpoints hold a
+# session while doing other work. Raised rather than relied upon: the real fix
+# for exhaustion is not holding a connection across network I/O, which is why
+# revalidation runs as a background task on its own session.
+# In-memory SQLite uses SingletonThreadPool, which takes none of these; only a
+# real pool accepts them.
+_in_memory = settings.database_url in ("sqlite://", "sqlite:///:memory:")
+_pool_args = (
+    {}
+    if _in_memory
+    else {
+        "pool_size": 20,
+        "max_overflow": 30,
+        "pool_timeout": 15,
+        "pool_pre_ping": True,
+    }
+)
+
+engine = create_engine(
+    settings.database_url, connect_args=_connect_args, future=True, **_pool_args
+)
 
 
 if _is_sqlite:

@@ -472,24 +472,29 @@ async def recommendations(
     matches, match_stats = matching.recommend(candidates, user, user_skills, limit=limit)
     stats.update(match_stats)
 
-    # A corpus entry is a snapshot. Before showing these specific issues, check
-    # the ones at the top are still open and unassigned, then re-rank if any
-    # turned out to be stale. Bounded to the few actually being displayed.
+    # A corpus entry is a snapshot, so the issues on screen get re-checked
+    # against GitHub. That happens AFTER the response, never inside it.
+    #
+    # Doing it inline held this request's database connection open across
+    # several seconds of network I/O. Under concurrency the pool emptied and
+    # every request failed with QueuePool timeout — the endpoint took itself
+    # down rather than being slow. The client polls /api/refresh/status and
+    # reloads when the counter moves, so a correction lands seconds later
+    # without any request waiting on GitHub.
     token = _user_token(user)
     if token and matches and not matches[0].issue.is_demo:
-        stale = [
-            m.issue
+        stale_ids = [
+            m.issue.id
             for m in matches
             if m.issue.fetched_at
-            and (datetime.now(timezone.utc).replace(tzinfo=None) - m.issue.fetched_at).total_seconds()
+            and (
+                datetime.now(timezone.utc).replace(tzinfo=None) - m.issue.fetched_at
+            ).total_seconds()
             > 1800
         ]
-        if stale and await services.revalidate(db, stale, token):
-            matches, match_stats = matching.recommend(
-                services.candidate_issues(db), user, user_skills, limit=limit
-            )
-            stats.update(match_stats)
-            stats["revalidated"] = True
+        if stale_ids:
+            background.add_task(services.revalidate_ids, stale_ids, token)
+            stats["revalidating"] = len(stale_ids)
 
     age = services.corpus_age_minutes(db)
     stats["corpus_age_minutes"] = round(age, 1) if age is not None else None

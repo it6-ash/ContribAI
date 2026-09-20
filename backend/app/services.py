@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from . import analysis as analysis_mod
 from . import skills as skills_mod
 from .config import get_settings
+from .db import SessionLocal
 from .github import GitHubClient, RateLimited
 from .models import Issue, IssueAnalysis, Repository, Skill, User, UserSkill
 from .seed import _get_or_create_skill
@@ -540,6 +541,19 @@ def corpus_age_minutes(db: Session) -> float | None:
     if not newest:
         return None
     return (datetime.now(timezone.utc).replace(tzinfo=None) - newest).total_seconds() / 60
+
+
+async def revalidate_ids(issue_ids: list[int], token: str | None, *, cap: int = 8) -> int:
+    """Re-check issues by id, on this task's own session.
+
+    Background tasks must not borrow the request's session: the request has
+    returned and its connection is back in the pool, so reusing it is a use
+    after free. Opening a short-lived session here also means the connection
+    is held only for the writes, not across the GitHub round trips.
+    """
+    with SessionLocal() as db:
+        issues = list(db.scalars(select(Issue).where(Issue.id.in_(issue_ids))).unique())
+        return await revalidate(db, issues, token, cap=cap)
 
 
 async def revalidate(db: Session, issues: list[Issue], token: str | None, *, cap: int = 8) -> int:
