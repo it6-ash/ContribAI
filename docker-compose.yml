@@ -1,0 +1,70 @@
+# ContribAI: Postgres + API + web, sized for a small VPS.
+#
+# Only the web container publishes a port. The API is reachable exclusively over
+# the internal network, via the Next.js /api/* proxy, which is what keeps the
+# session cookie first-party and the ingest endpoint off the public internet.
+#
+#   docker compose up -d --build
+#
+# Then point your reverse proxy (or Cloudflare Tunnel) at 127.0.0.1:3000.
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contribai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: contribai
+    volumes:
+      - contribai-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contribai -d contribai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://contribai:${POSTGRES_PASSWORD}@db:5432/contribai
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+
+      # PUBLIC_ORIGIN is the URL users type. Both of these point at it because
+      # the browser only ever talks to the web container; see next.config.ts.
+      FRONTEND_URL: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN in .env}
+      BACKEND_URL: ${PUBLIC_ORIGIN}
+
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+
+      # Without a token the scheduled refresh stays idle by design.
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+
+      CORPUS_REFRESH_ENABLED: ${CORPUS_REFRESH_ENABLED:-true}
+      REFRESH_INTERVAL_MINUTES: ${REFRESH_INTERVAL_MINUTES:-360}
+      REFRESH_LANGUAGES: ${REFRESH_LANGUAGES:-python,typescript,go}
+
+      INGEST_TOKEN: ${INGEST_TOKEN:-}
+
+  web:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    ports:
+      # Bound to loopback: terminate TLS in your reverse proxy, not here.
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  contribai-db:

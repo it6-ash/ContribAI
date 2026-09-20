@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+/* Single committed dark theme — this is a demo surface, not a product with a
+   light-mode audience yet. */
+:root {
+  --background: #08090c;
+  --surface: #0f1117;
+  --border: #1e222c;
+  --foreground: #e6e8ee;
+  --muted: #878ea0;
+  --accent: #5b9cff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-line: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--accent);
+  color: #06070a;
+}
+
+/* Difficulty is the only place a second hue is allowed: it encodes real
+   semantic state (beginner / intermediate / advanced), not decoration. */
+:root {
+  --surface-2: #141721;
+  --ok: #5aa87f;
+  --warn: #c2a24a;
+  --hard: #c07361;
+  --radius: 10px;
+}
+
+@theme inline {
+  --color-surface-2: var(--surface-2);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-hard: var(--hard);
+}
+
+html {
+  color-scheme: dark;
+}
+
+/* One shared focus treatment so keyboard users get the same affordance
+   everywhere without per-component work. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* One radius system: 10px containers, 4px inline chips, full on pills. */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.panel-2 {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Entry reveal. Cascade with --i on each child. Motion here is for hierarchy
+   (results arrive in rank order), not decoration. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    animation: reveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 55ms);
+  }
+
+  .bar-fill {
+    transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

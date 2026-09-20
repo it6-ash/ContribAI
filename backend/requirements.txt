@@ -1,0 +1,12 @@
+# Lower bounds, not pins: Python 3.14 needs the wheels that ship 3.14 binaries
+# (pydantic-core in particular has no 3.14 wheel before 2.12).
+fastapi>=0.119
+uvicorn[standard]>=0.38
+sqlalchemy>=2.0.44
+pydantic>=2.12
+pydantic-settings>=2.12
+httpx>=0.28
+itsdangerous>=2.2
+cryptography>=46.0
+pytest>=8.4
+# No LLM SDK: Groq speaks the OpenAI wire format, which is one httpx POST.
