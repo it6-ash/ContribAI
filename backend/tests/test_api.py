@@ -148,12 +148,23 @@ def test_ingest_upserts_issues(client):
     second = client.post("/api/ingest/issues", json=payload, headers=headers).json()
     assert second["issues_created"] == 0 and second["issues_updated"] == 1
 
-    # Ingested issues are live data, so a demo user must not see them.
+    # Once live issues exist they are what gets ranked, for everyone. The seeded
+    # corpus is a stand-in for an empty database, not a separate world: keeping
+    # demo users inside it meant recommending fabricated issue numbers in
+    # repositories that really exist, so "View on GitHub" 404'd.
     _login(client)
-    numbers = [
-        r["issue"]["number"] for r in client.get("/api/recommendations").json()["recommendations"]
-    ]
-    assert 42 not in numbers
+    recs = client.get("/api/recommendations").json()
+    assert recs["stats"]["corpus"] == "live"
+    assert all(r["issue"]["is_demo"] is False for r in recs["recommendations"])
+    assert 42 in [r["issue"]["number"] for r in recs["recommendations"]]
+
+
+def test_seeded_issues_are_flagged_so_the_ui_can_avoid_dead_links(client):
+    """A seed issue number inside a real repository resolves to a GitHub 404."""
+    _login(client)
+    recs = client.get("/api/recommendations").json()
+    assert recs["stats"]["corpus"] == "demo"  # nothing live ingested in this test
+    assert all(r["issue"]["is_demo"] is True for r in recs["recommendations"])
 
 
 def test_taxonomy_exposes_modes_and_weights(client):

@@ -90,6 +90,7 @@ export interface Issue {
   comments: number;
   state: string;
   url: string;
+  is_demo: boolean;
   created_at: string | null;
   updated_at: string | null;
   repository: Repository;

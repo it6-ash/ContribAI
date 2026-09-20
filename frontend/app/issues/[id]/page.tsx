@@ -99,11 +99,20 @@ export default function IssuePage({ params }: PageProps<"/issues/[id]">) {
                 </div>
               </div>
 
-              <div className="flex shrink-0 gap-2">
-                <Button variant="ghost" href={issue.url}>
-                  View on GitHub
-                  <ArrowSquareOut size={13} />
-                </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                {issue.is_demo ? (
+                  // Seed issue numbers sit inside repositories that really
+                  // exist, so linking out lands on a GitHub 404 that reads as
+                  // a product bug. Say what it is instead.
+                  <span className="rounded-[8px] border border-warn/40 bg-warn/10 px-3 py-2 text-[12.5px] text-warn">
+                    Sample issue, not on GitHub
+                  </span>
+                ) : (
+                  <Button variant="ghost" href={issue.url}>
+                    View on GitHub
+                    <ArrowSquareOut size={13} />
+                  </Button>
+                )}
                 <Button href={`/workspace/${issue.id}`}>Start contribution</Button>
               </div>
             </header>

@@ -96,15 +96,21 @@ export default function WorkspacePage({ params }: PageProps<"/workspace/[id]">) 
                       {issue.title}
                     </h1>
                   </div>
-                  <a
-                    href={issue.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex shrink-0 items-center gap-1.5 text-[13px] text-muted hover:text-foreground"
-                  >
-                    GitHub
-                    <ArrowSquareOut size={12} />
-                  </a>
+                  {issue.is_demo ? (
+                    <span className="shrink-0 font-mono text-[11.5px] text-warn">
+                      sample issue
+                    </span>
+                  ) : (
+                    <a
+                      href={issue.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex shrink-0 items-center gap-1.5 text-[13px] text-muted hover:text-foreground"
+                    >
+                      GitHub
+                      <ArrowSquareOut size={12} />
+                    </a>
+                  )}
                 </div>
                 {analysis ? (
                   <div className="mt-4 flex flex-wrap items-center gap-2">

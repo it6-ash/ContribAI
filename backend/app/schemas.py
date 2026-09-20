@@ -89,6 +89,10 @@ class IssueOut(BaseModel):
     comments: int = 0
     state: str
     url: str
+    # True for the seeded corpus. The UI must not offer a GitHub link for these:
+    # the numbers are fabricated inside repositories that really exist, so the
+    # link resolves to a 404 that looks like a product bug.
+    is_demo: bool = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
     repository: RepositoryOut

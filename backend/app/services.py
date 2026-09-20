@@ -9,7 +9,7 @@ from collections import Counter
 from datetime import datetime, timezone
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import analysis as analysis_mod
@@ -442,3 +442,61 @@ def all_candidate_issues(db: Session, *, demo_only: bool | None = None) -> list[
     if demo_only is not None:
         stmt = stmt.where(Issue.is_demo.is_(demo_only))
     return list(db.scalars(stmt).unique())
+
+
+def candidate_issues(db: Session) -> list[Issue]:
+    """What to rank for a real session: live issues, falling back to the seed.
+
+    The seeded corpus is a stand-in for an empty database, not a parallel world.
+    Pinning demo profiles to it meant recommending fabricated issue numbers in
+    repositories that actually exist, so "View on GitHub" led to a 404.
+    """
+    live = all_candidate_issues(db, demo_only=False)
+    return live if live else all_candidate_issues(db, demo_only=True)
+
+
+def corpus_age_minutes(db: Session) -> float | None:
+    """Minutes since the newest live issue was fetched. None if there are none."""
+    newest = db.scalar(select(func.max(Issue.fetched_at)).where(Issue.is_demo.is_(False)))
+    if not newest:
+        return None
+    return (datetime.now(timezone.utc).replace(tzinfo=None) - newest).total_seconds() / 60
+
+
+async def revalidate(db: Session, issues: list[Issue], token: str | None, *, cap: int = 8) -> int:
+    """Re-check the issues we are about to recommend against GitHub.
+
+    A corpus entry is a snapshot. By the time it reaches the top of someone's
+    list the issue may have been closed, assigned or picked up by a pull
+    request, and recommending it wastes the contributor's time. Only the few
+    that are actually about to be shown are checked, and only when stale.
+    """
+    client = GitHubClient(token)
+    changed = 0
+    for issue in issues[:cap]:
+        if issue.is_demo or not issue.repository:
+            continue
+        try:
+            data = await client.get(
+                f"/repos/{issue.repository.full_name}/issues/{issue.number}", ttl=600
+            )
+        except RateLimited:
+            break  # nothing further will succeed this window
+        except Exception as exc:  # noqa: BLE001
+            log.info("revalidate skipped %s: %s", issue.url, exc)
+            continue
+        if not data:
+            # 404: the issue was deleted or transferred. Do not keep offering it.
+            issue.state = "closed"
+            changed += 1
+            continue
+        state = data.get("state", issue.state)
+        assignee = (data.get("assignee") or {}).get("login")
+        if state != issue.state or assignee != issue.assignee:
+            issue.state, issue.assignee = state, assignee
+            changed += 1
+        issue.fetched_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    if changed:
+        db.commit()
+        log.info("revalidate updated %s issue(s)", changed)
+    return changed

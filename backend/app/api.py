@@ -147,6 +147,7 @@ def _issue_out(issue: Issue, *, include_body: bool = True) -> schemas.IssueOut:
         comments=issue.comments,
         state=issue.state,
         url=issue.url,
+        is_demo=issue.is_demo,
         created_at=issue.created_at,
         updated_at=issue.updated_at,
         repository=_repo_out(issue.repository),
@@ -389,6 +390,7 @@ def analyze_issue_route(
 # --------------------------------------------------------------------------
 @router.get("/recommendations", response_model=schemas.RecommendationsResponse)
 async def recommendations(
+    background: BackgroundTasks,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
     limit: int = Query(default=5, ge=1, le=20),
@@ -414,13 +416,48 @@ async def recommendations(
                 "retry_after_seconds": exc.seconds_remaining,
             }
 
-    candidates = services.all_candidate_issues(db, demo_only=True if user.is_demo else None)
+    # Live issues whenever we have any; the seeded corpus is a stand-in for an
+    # empty database, not a parallel world to keep demo users inside.
+    candidates = services.candidate_issues(db)
     for issue in candidates:
         if not issue.analysis:
             services.ensure_analysis(db, issue, use_llm=False)
 
     matches, match_stats = matching.recommend(candidates, user, user_skills, limit=limit)
     stats.update(match_stats)
+
+    # A corpus entry is a snapshot. Before showing these specific issues, check
+    # the ones at the top are still open and unassigned, then re-rank if any
+    # turned out to be stale. Bounded to the few actually being displayed.
+    token = _user_token(user)
+    if token and matches and not matches[0].issue.is_demo:
+        stale = [
+            m.issue
+            for m in matches
+            if m.issue.fetched_at
+            and (datetime.now(timezone.utc).replace(tzinfo=None) - m.issue.fetched_at).total_seconds()
+            > 1800
+        ]
+        if stale and await services.revalidate(db, stale, token):
+            matches, match_stats = matching.recommend(
+                services.candidate_issues(db), user, user_skills, limit=limit
+            )
+            stats.update(match_stats)
+            stats["revalidated"] = True
+
+    age = services.corpus_age_minutes(db)
+    stats["corpus_age_minutes"] = round(age, 1) if age is not None else None
+    stats["corpus"] = "demo" if (matches and matches[0].issue.is_demo) else "live"
+
+    # Stale corpus and nobody has asked for a refresh: start one in the
+    # background so the next visit is current. Never blocks this response.
+    if (
+        get_settings().github_token
+        and age is not None
+        and age > get_settings().refresh_interval_minutes
+    ):
+        background.add_task(refresher.run_once, None)
+        stats["refresh_started"] = True
 
     out: list[schemas.RecommendationOut] = []
     for match in matches:

@@ -35,6 +35,11 @@ export function IssueCard({
             <GitBranch size={13} />
             <span className="truncate font-mono">{issue.repository.full_name}</span>
             <span className="font-mono text-muted/60">#{issue.number}</span>
+            {issue.is_demo ? (
+              <span className="shrink-0 rounded border border-warn/35 px-1 py-px font-mono text-[10px] text-warn">
+                sample
+              </span>
+            ) : null}
           </div>
           <h3 className="mt-1.5 text-[16px] font-semibold leading-snug tracking-tight">
             <Link href={`/issues/${issue.id}`} className="hover:text-accent">
