@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import agents, matching, schemas, security, services
+from . import analysis as analysis_mod
 from .analysis import repo_health
 from .config import get_settings
 from .db import get_db
@@ -41,7 +42,8 @@ from .models import (
     UserSkill,
 )
 from .seed import PROFILES, seed_all
-from .skills import ALL_SKILL_NAMES, BY_NAME
+from .skills import ALL_SKILL_NAMES, BY_NAME, LEVELS as SKILL_LEVELS
+from .skills import level_for as skills_level_for
 
 log = logging.getLogger("contribai.api")
 router = APIRouter(prefix="/api")
@@ -82,7 +84,8 @@ def _user_token(user: User) -> str | None:
 # --------------------------------------------------------------------------
 def _skill_out(row: UserSkill) -> schemas.SkillOut:
     confidence = row.confidence
-    level = "advanced" if confidence >= 0.75 else "intermediate" if confidence >= 0.45 else "beginner"
+    # Shared with skills.level_for so the bands cannot drift apart.
+    level = skills_level_for(confidence)
     return schemas.SkillOut(
         name=row.skill.name,
         category=row.skill.category,
@@ -194,6 +197,8 @@ def taxonomy() -> dict:
         "skills": grouped,
         "modes": {k: v["label"] for k, v in matching.MODES.items()},
         "experience_levels": list(matching.EXPERIENCE_TARGET),
+        "skill_levels": list(SKILL_LEVELS),
+        "repo_quality_tiers": list(analysis_mod.QUALITY_TIERS),
         "weights": matching.WEIGHTS,
     }
 

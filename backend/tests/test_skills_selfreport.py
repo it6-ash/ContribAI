@@ -14,7 +14,7 @@ def test_level_sets_confidence_and_is_labelled(client):
     ).json()
     k = _named(data, "Kubernetes")
     assert k["source"] == "self_reported"
-    assert k["confidence"] == 0.70
+    assert k["confidence"] == 0.60
     assert k["evidence"] == ["self-reported: advanced"]
 
 
@@ -23,7 +23,7 @@ def test_self_reported_never_outranks_demonstrated_skill(client):
     evidence-based premise is decorative."""
     _login(client)
     before = _named(client.get("/api/profile").json(), "Python")
-    assert before["confidence"] > 0.70  # alex has strong Python evidence
+    assert before["confidence"] > 0.72  # alex has strong Python evidence
     after = _named(
         client.put(
             "/api/profile", json={"skills": [{"name": "Python", "level": "beginner"}]}
@@ -42,7 +42,7 @@ def test_a_skill_outside_the_taxonomy_is_kept_not_dropped(client):
     t = _named(data, "Terraform")
     assert t is not None, "typed skills used to be silently discarded"
     assert t["category"] == "other"
-    assert t["confidence"] == 0.50
+    assert t["confidence"] == 0.45
 
 
 def test_custom_skill_counts_when_the_issue_mentions_it(db):

@@ -79,14 +79,24 @@ async def analyze_github_profile(
             break
 
     merged_pr_languages: Counter[str] = Counter()
+    contributed_repos: set[str] = set()
     try:
         prs = await client.searched_prs(user.username)
         repo_lang = {f"{r['owner']['login']}/{r['name']}": r.get("language") for r in own}
         for pr in prs:
             slug = _slug_from_url(pr.get("repository_url", ""))
+            if not slug:
+                continue
+            # A merged PR into someone else's repository is the strongest
+            # evidence of contribution there is; own repos do not count.
+            if not slug.lower().startswith(f"{user.username.lower()}/"):
+                contributed_repos.add(slug)
             lang = repo_lang.get(slug)
             if lang:
                 merged_pr_languages[lang] += 1
+        user.merged_pr_count = len(prs)
+        user.contributed_repos = sorted(contributed_repos)[:200]
+        user.contributed_languages = sorted(merged_pr_languages)
     except Exception as exc:  # noqa: BLE001 - PR search is a bonus signal
         log.info("merged PR search skipped: %s", exc)
 
@@ -157,9 +167,11 @@ def persist_skills(
 # that GitHub evidence needs to read as "advanced": a claimed skill must never
 # outrank a demonstrated one, or the whole evidence-based premise is decorative.
 SELF_REPORTED_CONFIDENCE = {
-    "beginner": 0.30,
-    "intermediate": 0.50,
-    "advanced": 0.70,
+    "novice": 0.12,
+    "beginner": 0.28,
+    "intermediate": 0.45,
+    "advanced": 0.60,
+    "expert": 0.72,
 }
 MAX_CUSTOM_SKILLS = 20
 _CUSTOM_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 +#._/-]{0,39}$")

@@ -37,14 +37,19 @@ EXPERIENCE_TARGET = {
 }
 
 WEIGHTS = {
-    "skill_match": 0.30,
-    "difficulty_match": 0.20,
-    "technology_match": 0.15,
+    "skill_match": 0.28,
+    "difficulty_match": 0.18,
+    "technology_match": 0.14,
     "repository_accessibility": 0.10,
     "issue_clarity": 0.10,
-    "effort_fit": 0.05,
-    "learning_value": 0.05,
-    "repository_activity": 0.05,
+    # Past contribution is its own dimension rather than a nudge inside skills:
+    # having already landed a PR in this repository is a different kind of
+    # evidence from knowing the language, and it deserves to be visible as a
+    # separate reason in the UI.
+    "prior_contribution": 0.08,
+    "effort_fit": 0.04,
+    "learning_value": 0.04,
+    "repository_activity": 0.04,
 }
 assert abs(sum(WEIGHTS.values()) - 1.0) < 1e-9, "scoring weights must sum to 1"
 
@@ -305,6 +310,7 @@ def score_issue(
     clarity = analysis.clarity if analysis else 0.5
     learning_value = analysis.learning_value if analysis else 0.5
     effort_fit = _effort_fit(user, analysis)
+    prior, prior_reason = _prior_contribution(user, repo)
 
     dimensions = {
         "skill_match": round(skill_match, 3),
@@ -313,6 +319,7 @@ def score_issue(
         "repository_accessibility": round(accessibility, 3),
         "issue_clarity": round(clarity, 3),
         "effort_fit": round(effort_fit, 3),
+        "prior_contribution": round(prior, 3),
         "learning_value": round(learning_value, 3),
         "repository_activity": round(activity, 3),
     }
@@ -338,7 +345,7 @@ def score_issue(
         skill_gaps=sorted(gaps, key=lambda g: (g["severity"] != "core", g["skill"])),
         readiness=readiness,
     )
-    match.reasoning = explain(match, user, difficulty, health)
+    match.reasoning = explain(match, user, difficulty, health, prior, prior_reason)
     return match
 
 
@@ -372,7 +379,38 @@ def _accessibility(repo, health) -> float:
         score += 0.1
     if health.median_pr_response_hours is not None and health.median_pr_response_hours <= 72:
         score += 0.15
+
+    # Having a CONTRIBUTING.md does not make a 90k-star monorepo approachable.
+    # Scale is a separate, and for a newcomer often dominant, cost.
+    from .analysis import repo_scale
+
+    score *= {"small": 1.0, "medium": 0.95, "large": 0.75, "very_large": 0.55}[
+        repo_scale(repo)
+    ]
     return min(score, 1.0)
+
+
+def _prior_contribution(user: User, repo) -> tuple[float, str]:
+    """How much open-source ground this contributor has already covered here.
+
+    Returns the score and the reason, so the UI can say which of these applied
+    rather than showing an unexplained number.
+    """
+    repos = {r.lower() for r in (user.contributed_repos or [])}
+    langs = {lang.lower() for lang in (user.contributed_languages or [])}
+    merged = user.merged_pr_count or 0
+
+    if repo and repo.full_name.lower() in repos:
+        return 1.0, f"You have already had a pull request merged into {repo.full_name}"
+    if repo and (repo.language or "").lower() in langs and langs:
+        return 0.72, f"You have merged pull requests in {repo.language} before"
+    if merged >= 5:
+        return 0.6, f"{merged} merged pull requests across other projects"
+    if merged >= 1:
+        return 0.45, f"{merged} merged pull request{'s' if merged > 1 else ''} so far"
+    # Not zero: everyone starts at none, and a first contribution is the point
+    # of the product. Scoring it as a total absence would bury every newcomer.
+    return 0.25, "No merged pull requests yet, which is what this is for"
 
 
 def _effort_fit(user: User, analysis) -> float:
@@ -422,7 +460,14 @@ def _setup_readiness(repo, have: dict[str, float]) -> float:
     return min(score, 1.0)
 
 
-def explain(match: Match, user: User, difficulty: str, health) -> list[str]:
+def explain(
+    match: Match,
+    user: User,
+    difficulty: str,
+    health,
+    prior: float = 0.0,
+    prior_reason: str = "",
+) -> list[str]:
     """Deterministic 'why', always present even when the LLM is unavailable."""
     out: list[str] = []
     for m in match.matched_skills[:4]:
@@ -441,7 +486,10 @@ def explain(match: Match, user: User, difficulty: str, health) -> list[str]:
         out.append("✓ Issue is clearly specified")
     else:
         out.append("△ Issue is thin on detail, expect discovery work")
+    if prior_reason:
+        out.append(f"{'✓' if prior >= 0.45 else '△'} {prior_reason}")
     if health:
+        out.append(f"✓ Repository is {health.tier} for newcomers")
         if health.activity == "high":
             out.append(f"✓ Repository is active (last commit {health.days_since_commit}d ago)")
         elif health.activity == "low":

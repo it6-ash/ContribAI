@@ -1,30 +1,39 @@
 "use client";
 
-import type { Level, Recommendation } from "@/lib/types";
+import type { Difficulty, QualityTier, Recommendation } from "@/lib/types";
 
-export type SortKey = "fit" | "effort" | "readiness" | "difficulty";
+export type SortKey = "fit" | "effort" | "readiness" | "difficulty" | "quality";
 
 export interface Filters {
-  difficulty: Set<Level>;
+  difficulty: Set<Difficulty>;
   repos: Set<string>;
+  /** GitHub labels, straight off the issue. */
+  tags: Set<string>;
+  /** How well the repository supports newcomers. */
+  tiers: Set<QualityTier>;
   hideGaps: boolean;
   sort: SortKey;
 }
 
 export const EMPTY_FILTERS: Filters = {
-  difficulty: new Set<Level>(),
+  difficulty: new Set<Difficulty>(),
   repos: new Set<string>(),
+  tags: new Set<string>(),
+  tiers: new Set<QualityTier>(),
   hideGaps: false,
   sort: "fit",
 };
 
-const DIFFICULTIES: Level[] = ["beginner", "intermediate", "advanced"];
+const DIFFICULTIES: Difficulty[] = ["beginner", "intermediate", "advanced"];
+// Ascending, so the chips read as a scale rather than an arbitrary list.
+const TIERS: QualityTier[] = ["bare", "sparse", "workable", "welcoming", "exemplary"];
 
 const SORTS: Array<[SortKey, string]> = [
   ["fit", "Best fit"],
   ["readiness", "Most ready"],
   ["effort", "Quickest"],
   ["difficulty", "Hardest"],
+  ["quality", "Best run projects"],
 ];
 
 export function applyFilters(recs: Recommendation[], f: Filters): Recommendation[] {
@@ -32,11 +41,13 @@ export function applyFilters(recs: Recommendation[], f: Filters): Recommendation
     const d = r.issue.analysis?.difficulty;
     if (f.difficulty.size && (!d || !f.difficulty.has(d))) return false;
     if (f.repos.size && !f.repos.has(r.issue.repository.full_name)) return false;
+    if (f.tags.size && !r.issue.labels.some((l) => f.tags.has(l))) return false;
+    if (f.tiers.size && !f.tiers.has(r.issue.repository.health.tier)) return false;
     if (f.hideGaps && r.skill_gaps.some((g) => g.severity === "core")) return false;
     return true;
   });
 
-  const rank: Record<Level, number> = { beginner: 0, intermediate: 1, advanced: 2 };
+  const rank: Record<Difficulty, number> = { beginner: 0, intermediate: 1, advanced: 2 };
   return out.sort((a, b) => {
     switch (f.sort) {
       case "readiness":
@@ -50,6 +61,10 @@ export function applyFilters(recs: Recommendation[], f: Filters): Recommendation
         return (
           rank[b.issue.analysis?.difficulty ?? "intermediate"] -
           rank[a.issue.analysis?.difficulty ?? "intermediate"]
+        );
+      case "quality":
+        return (
+          b.issue.repository.health.score - a.issue.repository.health.score
         );
       default:
         return b.fit_score - a.fit_score;
@@ -95,8 +110,16 @@ export function DashboardControls({
   shown: number;
 }) {
   const repos = [...new Set(recs.map((r) => r.issue.repository.full_name))];
-  const counts = (d: Level) =>
+  const counts = (d: Difficulty) =>
     recs.filter((r) => r.issue.analysis?.difficulty === d).length;
+  const tierCount = (t: QualityTier) =>
+    recs.filter((r) => r.issue.repository.health.tier === t).length;
+
+  // Only labels that actually appear, most common first: the full GitHub label
+  // space is unbounded and most of it would never match anything on screen.
+  const tags = [...recs.flatMap((r) => r.issue.labels)]
+    .reduce((m, l) => m.set(l, (m.get(l) ?? 0) + 1), new Map<string, number>());
+  const topTags = [...tags.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
 
   const toggle = <T,>(set: Set<T>, value: T) => {
     const next = new Set(set);
@@ -106,7 +129,11 @@ export function DashboardControls({
   };
 
   const dirty =
-    filters.difficulty.size > 0 || filters.repos.size > 0 || filters.hideGaps;
+    filters.difficulty.size > 0 ||
+    filters.repos.size > 0 ||
+    filters.tags.size > 0 ||
+    filters.tiers.size > 0 ||
+    filters.hideGaps;
 
   return (
     <div className="panel flex flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3">
@@ -143,6 +170,41 @@ export function DashboardControls({
           ))}
         </div>
       ) : null}
+
+      {topTags.length ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted">
+            Tag
+          </span>
+          {topTags.map(([tag, n]) => (
+            <Toggle
+              key={tag}
+              on={filters.tags.has(tag)}
+              onClick={() => onChange({ ...filters, tags: toggle(filters.tags, tag) })}
+            >
+              {tag} <span className="opacity-60">{n}</span>
+            </Toggle>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span
+          className="mr-1 font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted"
+          title="How well the repository supports incoming contributors. Not a judgement of the code."
+        >
+          Project
+        </span>
+        {TIERS.filter((t) => tierCount(t) > 0).map((t) => (
+          <Toggle
+            key={t}
+            on={filters.tiers.has(t)}
+            onClick={() => onChange({ ...filters, tiers: toggle(filters.tiers, t) })}
+          >
+            {t} <span className="opacity-60">{tierCount(t)}</span>
+          </Toggle>
+        ))}
+      </div>
 
       <Toggle
         on={filters.hideGaps}

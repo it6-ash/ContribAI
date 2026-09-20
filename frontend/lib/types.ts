@@ -1,4 +1,21 @@
-export type Level = "beginner" | "intermediate" | "advanced";
+/** Issue difficulty stays three-valued; it describes the work, not a person. */
+export type Difficulty = "beginner" | "intermediate" | "advanced";
+
+/** Skill proficiency, five bands. Three collapsed everything from one hobby
+ *  repo to years of merged work into "intermediate". */
+export type Level =
+  | "novice"
+  | "beginner"
+  | "intermediate"
+  | "advanced"
+  | "expert";
+
+export type QualityTier =
+  | "bare"
+  | "sparse"
+  | "workable"
+  | "welcoming"
+  | "exemplary";
 
 export interface Skill {
   name: string;
@@ -42,6 +59,8 @@ export interface RepoHealth {
   median_pr_response_hours: number | null;
   open_issues: number;
   score: number;
+  /** How well the project supports an incoming contributor. Not code quality. */
+  tier: QualityTier;
   signals: string[];
 }
 
@@ -68,7 +87,7 @@ export interface IssueAnalysis {
   summary: string;
   problem_description: string;
   why_it_matters: string;
-  difficulty: Level;
+  difficulty: Difficulty;
   difficulty_basis: string;
   estimated_hours_min: number;
   estimated_hours_max: number;
@@ -165,5 +184,7 @@ export interface Taxonomy {
   skills: Record<string, string[]>;
   modes: Record<string, string>;
   experience_levels: string[];
+  skill_levels: Level[];
+  repo_quality_tiers: QualityTier[];
   weights: Record<string, number>;
 }

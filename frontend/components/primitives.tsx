@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
-import type { Level } from "@/lib/types";
+import type { Difficulty } from "@/lib/types";
 
-const DIFFICULTY_STYLE: Record<Level, string> = {
+const DIFFICULTY_STYLE: Record<Difficulty, string> = {
   beginner: "text-ok border-ok/30 bg-ok/10",
   intermediate: "text-warn border-warn/30 bg-warn/10",
   advanced: "text-hard border-hard/30 bg-hard/10",
 };
 
-export function DifficultyBadge({ level }: { level: Level }) {
+export function DifficultyBadge({ level }: { level: Difficulty }) {
   return (
     <span
       className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[11px] tracking-tight ${DIFFICULTY_STYLE[level]}`}

@@ -9,11 +9,13 @@ export interface PickedSkill {
   level: Level;
 }
 
-const LEVELS: Level[] = ["beginner", "intermediate", "advanced"];
+// Order and membership come from /api/taxonomy; this is only the short label.
 const LEVEL_SHORT: Record<Level, string> = {
+  novice: "Nov",
   beginner: "Beg",
   intermediate: "Int",
   advanced: "Adv",
+  expert: "Exp",
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -35,6 +37,13 @@ export function SkillPicker({
   onChange: (next: PickedSkill[]) => void;
 }) {
   const [query, setQuery] = useState("");
+  const levels: Level[] = taxonomy?.skill_levels ?? [
+    "novice",
+    "beginner",
+    "intermediate",
+    "advanced",
+    "expert",
+  ];
   const inputRef = useRef<HTMLInputElement>(null);
 
   const all = useMemo(
@@ -118,7 +127,7 @@ export function SkillPicker({
                   aria-label={`Level for ${p.name}`}
                   className="flex overflow-hidden rounded-[6px] border border-line"
                 >
-                  {LEVELS.map((lvl) => (
+                  {levels.map((lvl) => (
                     <button
                       key={lvl}
                       role="radio"

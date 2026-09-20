@@ -62,6 +62,51 @@ _CONCEPT_PATTERNS: tuple[tuple[str, str], ...] = (
 # --------------------------------------------------------------------------
 # Repository health
 # --------------------------------------------------------------------------
+# Five tiers over the composite. Named for how well the project supports an
+# incoming contributor, NOT for code quality: everything feeding the score is a
+# contribution-support signal (contribution guide, tests, review latency,
+# recent activity), and none of it says whether the software is any good.
+QUALITY_TIERS = ("bare", "sparse", "workable", "welcoming", "exemplary")
+_TIER_FLOORS = ((0.82, "exemplary"), (0.64, "welcoming"), (0.44, "workable"), (0.24, "sparse"))
+
+
+# How much a project's sheer size costs an outsider, independent of the issue.
+# A maintainer labels "good first issue" for someone already inside the project;
+# it says nothing about a CLA, a multi-hour build, a 40k-file tree, or waiting
+# two weeks behind 800 other contributors for a first review.
+SCALE_TIERS = ("small", "medium", "large", "very_large")
+
+
+def repo_scale(repo: Repository | None) -> str:
+    if not repo:
+        return "medium"
+    stars = repo.stars or 0
+    contributors = repo.contributors or 0
+    if stars >= 50_000 or contributors >= 500:
+        return "very_large"
+    if stars >= 15_000 or contributors >= 150:
+        return "large"
+    if stars >= 3_000 or contributors >= 40:
+        return "medium"
+    return "small"
+
+
+# Added to the difficulty rank. Onboarding cost, not code complexity.
+_SCALE_PENALTY = {"small": 0.0, "medium": 0.15, "large": 0.55, "very_large": 0.9}
+
+_SCALE_NOTE = {
+    "large": "Large project: expect a contributor agreement, a slower first review, and a codebase you will not hold in your head.",
+    "very_large": "Very large project: a 'good first issue' here is scoped for existing contributors. Budget real time for the CLA, the build, and waiting in the review queue.",
+}
+
+
+def quality_tier(score: float) -> str:
+    for floor, name in _TIER_FLOORS:
+        if score >= floor:
+            return name
+    return "bare"
+
+
 @dataclass
 class RepoHealth:
     """Factual signals + one composite heuristic. Never presented as an absolute
@@ -77,6 +122,7 @@ class RepoHealth:
     median_pr_response_hours: float | None = None
     open_issues: int = 0
     score: float = 0.0                 # 0..1 heuristic, labelled as such in the UI
+    tier: str = "bare"                 # quality_tier(score); how well it supports newcomers
     signals: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -156,6 +202,7 @@ def repo_health(repo: Repository) -> RepoHealth:
         health.signals.insert(0, f"Last commit {days} day{'s' if days != 1 else ''} ago")
 
     health.score = round(min(score, 1.0), 3)
+    health.tier = quality_tier(health.score)
     return health
 
 
@@ -374,9 +421,19 @@ def difficulty_for(issue: Issue, required: list[str], clarity: float) -> tuple[s
         reasons.append("long discussion thread suggests contention")
 
     repo = issue.repository
-    if repo and (repo.stars or 0) > 20000:
-        rank += 0.3
-        reasons.append("large, heavily-used codebase")
+    scale = repo_scale(repo)
+    penalty = _SCALE_PENALTY[scale]
+    if penalty:
+        rank += penalty
+        reasons.append(
+            f"{scale.replace('_', ' ')} project, so onboarding costs more than the change itself"
+        )
+
+    # A beginner label is the maintainer's view from inside the project. In a
+    # very large one it cannot cancel the cost of getting in, so claw part of
+    # the discount back rather than letting the two cancel to "beginner".
+    if labels & BEGINNER_LABELS and scale in ("large", "very_large"):
+        rank += 0.45 if scale == "very_large" else 0.25
 
     if rank <= 0.35:
         difficulty = "beginner"
@@ -417,6 +474,9 @@ def analyze_issue(issue: Issue, *, use_llm: bool = True) -> IssueInsight:
     learning = 0.4 + 0.1 * min(len(concepts), 3) + (0.2 if difficulty != "beginner" else 0.0)
 
     questions = list(clarity_notes)
+    scale_note = _SCALE_NOTE.get(repo_scale(issue.repository))
+    if scale_note:
+        questions.insert(0, scale_note)
     if not files:
         questions.append("No obvious source files identified from the issue text")
     if issue.assignee:

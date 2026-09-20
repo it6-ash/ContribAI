@@ -34,7 +34,7 @@ def test_profile_returns_skills_with_evidence(client):
     data = client.get("/api/profile").json()
     assert data["user"]["username"] == "alex"
     python = next(s for s in data["skills"] if s["name"] == "Python")
-    assert python["level"] == "advanced"
+    assert python["level"] == "expert"  # 0.88 confidence, top band of five
     assert python["evidence"]
     assert "language" in data["skills_by_category"]
 

@@ -80,6 +80,8 @@ export default function DashboardPage() {
     filters.sort !== "fit" ||
     filters.difficulty.size > 0 ||
     filters.repos.size > 0 ||
+    filters.tags.size > 0 ||
+    filters.tiers.size > 0 ||
     filters.hideGaps;
   // The hero already shows visible[0]; listing it again reads as a duplicate.
   const rest = steering ? visible : visible.slice(1);

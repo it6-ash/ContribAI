@@ -92,6 +92,20 @@ TAXONOMY: tuple[SkillDef, ...] = (
 BY_NAME = {s.name: s for s in TAXONOMY}
 ALL_SKILL_NAMES = tuple(s.name for s in TAXONOMY)
 
+# Five bands rather than three: at three, everything from a single hobby repo
+# to years of merged work collapsed into "intermediate", which is the band that
+# matters most for matching difficulty.
+LEVELS = ("novice", "beginner", "intermediate", "advanced", "expert")
+_LEVEL_FLOORS = ((0.78, "expert"), (0.60, "advanced"), (0.38, "intermediate"), (0.18, "beginner"))
+
+
+def level_for(confidence: float) -> str:
+    for floor, name in _LEVEL_FLOORS:
+        if confidence >= floor:
+            return name
+    return "novice"
+
+
 # Weight per kind of evidence. Merged PRs are the strongest signal available
 # because they survived someone else's review.
 EVIDENCE_WEIGHTS = {
@@ -130,11 +144,7 @@ class ExtractedSkill:
 
     @property
     def level(self) -> str:
-        if self.confidence >= 0.75:
-            return "advanced"
-        if self.confidence >= 0.45:
-            return "intermediate"
-        return "beginner"
+        return level_for(self.confidence)
 
 
 def _norm(text: str | None) -> str:

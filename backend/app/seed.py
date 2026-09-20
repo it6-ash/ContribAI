@@ -515,6 +515,9 @@ PROFILES: list[dict] = [
         "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
         "experience_level": "developer",
         "mode": "developer_match",
+        "merged_pr_count": 0,
+        "contributed_repos": [],
+        "contributed_languages": [],
         "interests": ["fastapi", "rest-api", "fintech", "python"],
         "skills": {
             "Python": (0.88, ["7 repositories", "primary language of ledger-cli", "4,200 lines analysed"]),
@@ -534,6 +537,9 @@ PROFILES: list[dict] = [
         "avatar_url": "https://avatars.githubusercontent.com/u/9920?v=4",
         "experience_level": "some_oss",
         "mode": "developer_match",
+        "merged_pr_count": 3,
+        "contributed_repos": ["vela-ui/vela"],
+        "contributed_languages": ["TypeScript"],
         "interests": ["react", "accessibility", "components", "typescript"],
         "skills": {
             "TypeScript": (0.86, ["9 repositories", "primary language of design-tokens"]),
@@ -553,6 +559,9 @@ PROFILES: list[dict] = [
         "avatar_url": "https://avatars.githubusercontent.com/u/9921?v=4",
         "experience_level": "experienced",
         "mode": "high_impact",
+        "merged_pr_count": 12,
+        "contributed_repos": ["orbitcache/orbit", "kubernetes/kubernetes"],
+        "contributed_languages": ["Go"],
         "interests": ["distributed-systems", "kubernetes", "go", "cache"],
         "skills": {
             "Go": (0.90, ["8 repositories", "12 merged pull requests"]),
@@ -627,6 +636,9 @@ def seed_all(db: Session, *, analyze: bool = True) -> dict:
             experience_level=spec["experience_level"],
             mode=spec["mode"],
             interests=spec["interests"],
+            merged_pr_count=spec.get("merged_pr_count", 0),
+            contributed_repos=spec.get("contributed_repos", []),
+            contributed_languages=spec.get("contributed_languages", []),
             is_demo=True,
             profile_analyzed_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )

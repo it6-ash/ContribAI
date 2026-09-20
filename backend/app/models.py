@@ -33,6 +33,12 @@ class User(Base):
     experience_level: Mapped[str] = mapped_column(String(40), default="developer")
     mode: Mapped[str] = mapped_column(String(40), default="developer_match")
     interests: Mapped[list] = mapped_column(JSON, default=list)
+    # Past open-source contribution, used as its own scoring dimension. Someone
+    # who has already landed a PR in this repo, or in this language, is a
+    # materially different candidate from someone who never has.
+    merged_pr_count: Mapped[int] = mapped_column(default=0)
+    contributed_repos: Mapped[list] = mapped_column(JSON, default=list)
+    contributed_languages: Mapped[list] = mapped_column(JSON, default=list)
     profile_analyzed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

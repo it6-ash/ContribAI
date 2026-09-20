@@ -46,7 +46,7 @@ def test_confidence_grows_with_evidence_and_saturates():
     weak = next(s for s in one if s.name == "Python")
     strong = next(s for s in many if s.name == "Python")
     assert weak.confidence < strong.confidence < 1.0
-    assert strong.level == "advanced"
+    assert strong.level == "expert"
 
 
 def test_forks_are_not_evidence():
