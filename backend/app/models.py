@@ -40,6 +40,9 @@ class User(Base):
     contributed_repos: Mapped[list] = mapped_column(JSON, default=list)
     contributed_languages: Mapped[list] = mapped_column(JSON, default=list)
     profile_analyzed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # When we last searched GitHub using *this* user's queries. Corpus age is a
+    # global number; this is what decides whether their own stack is stale.
+    last_discovery_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     skills: Mapped[list["UserSkill"]] = relationship(

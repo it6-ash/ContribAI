@@ -6,6 +6,7 @@ import type {
   Profile,
   Recommendation,
   RecommendationsResponse,
+  RefreshStatus,
   Repository,
   Taxonomy,
   User,
@@ -84,6 +85,13 @@ export const api = {
       `/recommendations?limit=${limit}&refresh=${refresh}`,
     ),
   recommendation: (id: number) => request<Recommendation>(`/recommendations/${id}`),
+
+  refreshStatus: () => request<RefreshStatus>("/refresh/status"),
+  refreshCorpus: () =>
+    request<{ started: boolean; reason?: string; queries: string[] }>(
+      "/refresh/corpus",
+      { method: "POST" },
+    ),
 
   issue: (id: number) => request<Issue>(`/issues/${id}`),
   explainIssue: (id: number) => request<Issue>(`/issues/${id}/analyze`, { method: "POST" }),

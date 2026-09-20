@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowClockwise, CaretDown } from "@phosphor-icons/react/dist/ssr";
+import { CaretDown } from "@phosphor-icons/react/dist/ssr";
 import { api, ApiError } from "@/lib/api";
 import { Nav } from "@/components/Nav";
 import { IssueCard } from "@/components/IssueCard";
 import { MatchHeatmap } from "@/components/MatchHeatmap";
+import { LiveBar } from "@/components/LiveBar";
+import { useLiveCorpus } from "@/components/useLiveCorpus";
 import { TopPick } from "@/components/TopPick";
 import { FilterFunnel } from "@/components/viz";
 import {
@@ -38,7 +40,6 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [data, setData] = useState<RecommendationsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   // Analytics are commentary on the ranking, not the answer. Closed by default.
   const [showWorkings, setShowWorkings] = useState(false);
@@ -46,7 +47,6 @@ export default function DashboardPage() {
   const load = useCallback(
     async (refresh = false) => {
       setError(null);
-      if (refresh) setRefreshing(true);
       try {
         const [p, recs] = await Promise.all([
           api.profile(),
@@ -60,8 +60,6 @@ export default function DashboardPage() {
           return;
         }
         setError(err instanceof ApiError ? err.message : "Could not load your dashboard.");
-      } finally {
-        setRefreshing(false);
       }
     },
     [router],
@@ -70,6 +68,10 @@ export default function DashboardPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Reloads recommendations whenever a corpus run completes, including runs
+  // this tab did not start.
+  const live = useLiveCorpus(useCallback(() => load(), [load]));
 
   const all = data?.recommendations ?? [];
   const visible = applyFilters(all, filters);
@@ -114,19 +116,20 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {profile && !profile.user.is_demo ? (
-              <Button variant="ghost" onClick={() => load(true)} disabled={refreshing}>
-                <ArrowClockwise
-                  size={14}
-                  className={refreshing ? "animate-spin" : ""}
-                />
-                {refreshing ? "Searching GitHub" : "Refresh from GitHub"}
-              </Button>
-            ) : null}
             <Button variant="ghost" href="/profile">
               Edit profile
             </Button>
           </div>
+        </div>
+
+        <div className="mt-5">
+          <LiveBar
+            status={live.status}
+            busy={live.busy}
+            starting={live.starting}
+            error={live.error}
+            onRefresh={live.refresh}
+          />
         </div>
 
         {topSkills.length ? (

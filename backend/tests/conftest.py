@@ -11,6 +11,11 @@ sys.path.insert(0, str(ROOT))
 os.environ.setdefault("DATABASE_URL", "sqlite://")  # in-memory
 os.environ.setdefault("SESSION_SECRET", "test-secret")
 os.environ.setdefault("GROQ_API_KEY", "")  # force the heuristic path in tests
+# Hard-set, not setdefault: backend/.env carries real credentials and
+# pydantic-settings reads it, so without this the suite makes live GitHub calls
+# on every sign-in and takes minutes instead of seconds.
+os.environ["GITHUB_TOKEN"] = ""
+os.environ["CORPUS_REFRESH_ENABLED"] = "false"
 os.environ.setdefault("INGEST_TOKEN", "test-ingest-token")
 
 from sqlalchemy import create_engine  # noqa: E402

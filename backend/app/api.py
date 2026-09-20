@@ -264,7 +264,12 @@ async def auth_github_callback(
 
 
 @router.post("/auth/demo")
-def auth_demo(response: Response, username: str = "alex", db: Session = Depends(get_db)) -> dict:
+def auth_demo(
+    response: Response,
+    background: BackgroundTasks,
+    username: str = "alex",
+    db: Session = Depends(get_db),
+) -> dict:
     """Sign in as one of the seeded profiles. No GitHub, no network, no key."""
     if settings.is_production:
         # Otherwise anyone who finds the deployed API signs in as 'alex'.
@@ -276,7 +281,36 @@ def auth_demo(response: Response, username: str = "alex", db: Session = Depends(
             detail=f"Unknown demo profile. Available: {[p['username'] for p in PROFILES]}",
         )
     _set_session(response, user)
+    _refresh_on_login(background, db, user)
     return {"user": _user_out(user).model_dump(mode="json")}
+
+
+def _refresh_on_login(background: BackgroundTasks, db: Session, user: User) -> None:
+    """Start a search for this user's stack when they sign in.
+
+    Waiting for the six-hourly tick meant a new account saw whatever the last
+    unrelated run happened to leave behind. Skipped when a run is already in
+    flight or their own results are recent, so repeated logins do not stack up
+    GitHub calls.
+    """
+    settings = get_settings()
+    if not settings.github_token or refresher.in_progress:
+        return
+    if user.last_discovery_at:
+        age = (
+            datetime.now(timezone.utc).replace(tzinfo=None) - user.last_discovery_at
+        ).total_seconds() / 60
+        if age < settings.login_refresh_after_minutes:
+            return
+    skills = services.load_user_skills(db, user)
+    if not skills:
+        return
+    user.last_discovery_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.commit()
+    background.add_task(
+        refresher.run_once, services.discovery_queries(user, skills, limit=6)
+    )
+    log.info("login refresh queued for %s", user.username)
 
 
 @router.post("/auth/logout")
@@ -706,9 +740,26 @@ def ingest_issues(
 
 
 @router.get("/refresh/status")
-def refresh_status() -> dict:
-    """When the corpus last refreshed, and when it will next."""
-    return refresher.status()
+def refresh_status(
+    db: Session = Depends(get_db),
+    contribai_session: str | None = Cookie(default=None),
+) -> dict:
+    """Live refresh state. The dashboard polls this.
+
+    Deliberately cheap and unauthenticated-tolerant: it runs every few seconds
+    while a refresh is in flight, so it must not do real work.
+    """
+    out = refresher.status()
+    out["corpus_age_minutes"] = services.corpus_age_minutes(db)
+    out["can_refresh"] = bool(get_settings().github_token)
+
+    uid = security.read_session(contribai_session)
+    user = db.get(User, uid) if uid else None
+    if user:
+        out["last_discovery_at"] = (
+            user.last_discovery_at.isoformat() if user.last_discovery_at else None
+        )
+    return out
 
 
 @router.post("/refresh/corpus")
@@ -735,7 +786,12 @@ async def refresh_corpus(
         raise HTTPException(
             status_code=409, detail="No skill graph yet, so there is nothing to search for."
         )
+    if refresher.in_progress:
+        return {"started": False, "reason": "already running", "queries": []}
+
     queries = services.discovery_queries(user, user_skills, limit=6)
+    user.last_discovery_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.commit()
     background.add_task(refresher.run_once, queries)
     return {"started": True, "queries": queries}
 

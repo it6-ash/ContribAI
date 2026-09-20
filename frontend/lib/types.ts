@@ -171,6 +171,28 @@ export interface Plan {
   source: "heuristic" | "llm";
 }
 
+export interface RefreshStatus {
+  enabled: boolean;
+  running: boolean;
+  in_progress: boolean;
+  interval_minutes: number;
+  languages: string;
+  /** Monotonic. The dashboard watches this rather than diffing timestamps, so
+   *  a run that starts and finishes between two polls is still noticed. */
+  runs_completed: number;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  last_result: {
+    fetched?: number;
+    ingested?: number;
+    rate_limited?: boolean;
+    duration_seconds?: number;
+  } | null;
+  corpus_age_minutes: number | null;
+  can_refresh: boolean;
+  last_discovery_at?: string | null;
+}
+
 export interface Health {
   status: string;
   llm_provider: string;

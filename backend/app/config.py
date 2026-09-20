@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     refresh_interval_minutes: int = 360
     refresh_languages: str = "python,typescript,go"
     refresh_startup_delay_seconds: int = 30
+    # On sign-in, only search again if this user's own results are older than
+    # this. Stops repeated logins stacking up GitHub calls.
+    login_refresh_after_minutes: int = 45
 
     # Hard cap on issues pulled per discovery run, keeps demo latency predictable.
     max_candidate_issues: int = 150

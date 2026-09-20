@@ -35,8 +35,16 @@ class CorpusRefresher:
         self.last_run_at: datetime | None = None
         self.last_result: dict | None = None
         self.next_run_at: datetime | None = None
+        # Increments on every completed run. A client polls this instead of
+        # diffing timestamps, so it cannot miss a run that started and
+        # finished between two polls.
+        self.runs_completed: int = 0
 
     # --- lifecycle ------------------------------------------------------
+    @property
+    def in_progress(self) -> bool:
+        return self._running.locked()
+
     @property
     def enabled(self) -> bool:
         settings = get_settings()
@@ -116,6 +124,7 @@ class CorpusRefresher:
             )
             self.last_run_at = started
             self.last_result = stats
+            self.runs_completed += 1
             log.info(
                 "corpus refresh: fetched=%s ingested=%s in %ss",
                 stats.get("fetched"),
@@ -129,9 +138,10 @@ class CorpusRefresher:
         return {
             "enabled": self.enabled,
             "running": bool(self._task and not self._task.done()),
-            "in_progress": self._running.locked(),
+            "in_progress": self.in_progress,
             "interval_minutes": get_settings().refresh_interval_minutes,
             "languages": get_settings().refresh_languages,
+            "runs_completed": self.runs_completed,
             "last_run_at": self.last_run_at.isoformat() if self.last_run_at else None,
             "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,
             "last_result": self.last_result,
