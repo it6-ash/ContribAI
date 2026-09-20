@@ -57,6 +57,28 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Headers the app had none of.
+
+    CSP is deliberately strict: this API serves JSON and its own docs, never
+    third-party script. The frontend sets its own policy; this covers the
+    case where the API is reached directly.
+    """
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy", "geolocation=(), microphone=(), camera=()"
+    )
+    if settings.backend_url.startswith("https"):
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    return response
+
+
 @app.exception_handler(RateLimited)
 async def rate_limited_handler(request: Request, exc: RateLimited) -> JSONResponse:
     """Surface GitHub's limit as a countdown the UI can render, never a silent failure."""

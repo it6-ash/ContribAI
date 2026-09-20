@@ -31,6 +31,7 @@ from .analysis import repo_health
 from .config import get_settings
 from .db import get_db
 from .github import RateLimited, exchange_oauth_code
+from .limits import api_limiter, llm_limiter
 from .llm import get_provider
 from .scheduler import refresher
 from .models import (
@@ -73,6 +74,32 @@ def _set_session(response: Response, user: User) -> None:
         max_age=60 * 60 * 24 * 7,
         secure=settings.backend_url.startswith("https"),
     )
+
+
+def _rate_limit(user: User, limiter, *, units: float = 0.0) -> None:
+    """One choke point for abuse control.
+
+    Keyed on the user, not the IP: IP alone is defeated by anyone signed in,
+    and this product's expensive endpoints all require a session.
+    """
+    ok, retry = limiter.check(f"user:{user.id}", units=units)
+    if not ok:
+        log.warning("rate limited user=%s", user.username)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many requests. Try again in {retry}s.",
+            headers={"Retry-After": str(retry)},
+        )
+
+
+def llm_guard(user: User = Depends(current_user)) -> User:
+    """Attach to every route that can reach the model provider.
+
+    Bounds requests AND estimated tokens: request count alone does not bound
+    cost, and the bill is the actual failure mode here.
+    """
+    _rate_limit(user, llm_limiter, units=get_settings().llm_units_per_call)
+    return user
 
 
 def _user_token(user: User) -> str | None:
@@ -391,13 +418,19 @@ def update_profile(
 # Repositories & issues
 # --------------------------------------------------------------------------
 @router.get("/repositories")
-def list_repositories(db: Session = Depends(get_db), limit: int = 50) -> list[dict]:
+def list_repositories(
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+    limit: int = 50,
+) -> list[dict]:
     repos = db.scalars(select(Repository).order_by(Repository.stars.desc()).limit(limit))
     return [_repo_out(r).model_dump(mode="json") for r in repos]
 
 
 @router.get("/repositories/{repo_id}")
-def get_repository(repo_id: int, db: Session = Depends(get_db)) -> dict:
+def get_repository(
+    repo_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> dict:
     repo = db.get(Repository, repo_id)
     if not repo:
         raise HTTPException(status_code=404, detail="Repository not found")
@@ -409,7 +442,13 @@ def get_repository(repo_id: int, db: Session = Depends(get_db)) -> dict:
 
 
 @router.get("/issues/{issue_id}", response_model=schemas.IssueOut)
-def get_issue(issue_id: int, db: Session = Depends(get_db)) -> schemas.IssueOut:
+def get_issue(
+    issue_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> schemas.IssueOut:
+    # Was unauthenticated, and it writes: ensure_analysis persists an analysis
+    # row, so anyone could drive database work by walking sequential ids.
     issue = db.get(Issue, issue_id)
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
@@ -421,7 +460,7 @@ def get_issue(issue_id: int, db: Session = Depends(get_db)) -> schemas.IssueOut:
 def analyze_issue_route(
     issue_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(current_user),
+    _: User = Depends(llm_guard),
 ) -> schemas.IssueOut:
     """Deep 'Explain this issue' pass. Uses the LLM when configured, heuristics otherwise."""
     issue = db.get(Issue, issue_id)
@@ -589,7 +628,7 @@ def _match_for(db: Session, user: User, issue: Issue) -> dict:
 def contribution_plan(
     issue_id: int,
     regenerate: bool = Query(default=False),
-    user: User = Depends(current_user),
+    user: User = Depends(llm_guard),
     db: Session = Depends(get_db),
 ) -> schemas.PlanOut:
     issue = db.get(Issue, issue_id)
@@ -637,7 +676,7 @@ def contribution_plan(
 def contribution_chat(
     issue_id: int,
     payload: schemas.ChatRequest,
-    user: User = Depends(current_user),
+    user: User = Depends(llm_guard),
     db: Session = Depends(get_db),
 ) -> schemas.ChatResponse:
     issue = db.get(Issue, issue_id)

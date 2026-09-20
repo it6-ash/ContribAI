@@ -3,6 +3,7 @@ import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 import { Nav } from "@/components/Nav";
 import { CountUp, Reveal, WordReveal } from "@/components/motion";
 import { PipelineScroll } from "@/components/PipelineScroll";
+import { MatchSpaceLazy } from "@/components/MatchSpaceLazy";
 
 const EVIDENCE = [
   ["Fact", "The repository contains CONTRIBUTING.md. Last commit 2 days ago. 48 contributors."],
@@ -145,6 +146,30 @@ export default function Home() {
       </div>
 
       <main className="mx-auto w-full max-w-[1400px] px-6">
+        {/* ── The model, as space ──────────────────────────────── */}
+        <section className="border-t border-line py-24">
+          <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-14">
+            <div>
+              <h2 className="display-sm max-w-[16ch]">
+                Fit is a distance, not a badge.
+              </h2>
+              <p className="mt-5 max-w-[46ch] text-[15px] leading-relaxed text-muted">
+                Three of the eight scoring dimensions become axes here. You are at
+                the centre, every issue sits where its scores put it, and the ones
+                worth your time are the ones nearby.
+              </p>
+              <p className="mt-4 max-w-[46ch] text-[14px] leading-relaxed text-muted">
+                A ranked list can tell you which issue came first. It cannot show
+                you that two of them are neighbours and the third is nowhere near.
+              </p>
+              <p className="mt-6 font-mono text-[11.5px] text-muted">
+                scroll to orbit, hover a point to read it
+              </p>
+            </div>
+            <MatchSpaceLazy />
+          </div>
+        </section>
+
         {/* ── Evidence discipline ──────────────────────────────── */}
         <section className="border-t border-line py-24">
           <h2 className="display-sm max-w-[22ch] text-gradient">

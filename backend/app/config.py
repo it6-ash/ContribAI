@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     # this. Stops repeated logins stacking up GitHub calls.
     login_refresh_after_minutes: int = 45
 
+    # Charged against the per-user hourly ceiling on every model call. A rough
+    # upper bound per call, not a measurement: the point is to bound spend, and
+    # over-estimating fails safe.
+    llm_units_per_call: float = 3000.0
+
     # Hard cap on issues pulled per discovery run, keeps demo latency predictable.
     max_candidate_issues: int = 150
 
