@@ -1,5 +1,5 @@
-import { Check } from "@phosphor-icons/react/dist/ssr";
 import type { MatchedSkill, SkillGap as Gap } from "@/lib/types";
+import { SkillDumbbell } from "./viz";
 
 export function SkillGapPanel({
   matched,
@@ -14,56 +14,25 @@ export function SkillGapPanel({
     <div className="space-y-6">
       <p className="max-w-[68ch] text-[14px] leading-relaxed">{narrative}</p>
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <section>
-          <h3 className="mb-3 text-[13.5px] font-semibold">
-            You already have ({matched.length})
-          </h3>
-          <ul className="space-y-1.5">
-            {matched.map((m) => (
-              <li key={m.skill} className="flex items-center gap-2 text-[13.5px]">
-                <Check size={13} className="shrink-0 text-ok" />
-                <span>{m.skill}</span>
-                <span className="font-mono text-[11px] text-muted">
-                  {Math.round(m.confidence * 100)}%
-                </span>
-              </li>
-            ))}
-            {matched.length === 0 ? (
-              <li className="text-[13.5px] text-muted">
-                None of the required skills appear in your GitHub evidence yet.
-              </li>
-            ) : null}
-          </ul>
-        </section>
-
-        <section>
-          <h3 className="mb-3 text-[13.5px] font-semibold">Missing ({gaps.length})</h3>
-          <ul className="space-y-2.5">
-            {gaps.map((g) => (
-              <li key={g.skill}>
-                <div className="flex items-center gap-2 text-[13.5px]">
-                  <span className={g.severity === "core" ? "text-hard" : "text-warn"}>
-                    △
-                  </span>
-                  <span>{g.skill}</span>
-                  <span className="font-mono text-[11px] text-muted">
-                    {g.severity}
-                  </span>
-                </div>
-                <p className="pl-5 text-[12.5px] text-muted">
-                  roughly {Math.round(g.learning_hours)}h to a working level, not mastery
-                </p>
-              </li>
-            ))}
-            {gaps.length === 0 ? (
-              <li className="text-[13.5px] text-muted">
-                No missing skills detected for this issue.
-              </li>
-            ) : null}
-          </ul>
-        </section>
-      </div>
+      {/* One row per required skill, showing the distance between your
+          evidence and what this issue needs. Two tick-lists made the reader
+          diff them by eye; a dumbbell puts the gap on one axis. */}
+      <SkillDumbbell
+        rows={[
+          ...matched.map((m) => ({
+            skill: m.skill,
+            have: m.confidence,
+            // A skill you already demonstrate is treated as met at your own level.
+            needed: Math.min(m.confidence, 0.6),
+          })),
+          ...gaps.map((g) => ({
+            skill: g.skill,
+            have: 0,
+            needed: g.severity === "core" ? 0.7 : 0.45,
+            severity: g.severity,
+          })),
+        ]}
+      />
     </div>
   );
 }

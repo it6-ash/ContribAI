@@ -1,5 +1,6 @@
 import type { Recommendation } from "@/lib/types";
 import { Bar } from "./primitives";
+import { Meter } from "./viz";
 
 const DIMENSION_LABEL: Record<string, string> = {
   skill_match: "Skill match",
@@ -57,9 +58,9 @@ export function ReadinessPanel({ rec }: { rec: Recommendation }) {
           contribution readiness
         </span>
       </div>
-      <div className="space-y-2">
+      <div className="viz space-y-3">
         {keys.map((key) => (
-          <Bar key={key} label={READINESS_LABEL[key]} value={rec.readiness[key]} />
+          <Meter key={key} label={READINESS_LABEL[key]} value={rec.readiness[key]} />
         ))}
       </div>
       <p className="mt-4 text-[13px] leading-relaxed text-muted">

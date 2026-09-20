@@ -54,6 +54,22 @@ html {
   color-scheme: dark;
 }
 
+/* Data-visualisation tokens.
+   One blue hue, light -> dark, for magnitude. Validated against this page's
+   surface (#0f1117) with the dataviz validator: monotone lightness, every
+   adjacent gap >= 0.06, light end at 2.33:1. Do not hand-tweak a step without
+   re-running it; two of these steps were originally one apart and failed. */
+.viz {
+  --viz-surface: var(--surface);
+  --seq-1: #184f95; /* nearest zero */
+  --seq-2: #256abf;
+  --seq-3: #3987e5;
+  --seq-4: #6da7ec;
+  --seq-5: #9ec5f4; /* strongest */
+  --viz-empty: #1b2030; /* no-data / zero cell, reads as surface */
+  --viz-grid: rgba(255, 255, 255, 0.07);
+}
+
 /* One shared focus treatment so keyboard users get the same affordance
    everywhere without per-component work. */
 :focus-visible {

@@ -7,6 +7,14 @@ import { ArrowClockwise } from "@phosphor-icons/react/dist/ssr";
 import { api, ApiError } from "@/lib/api";
 import { Nav } from "@/components/Nav";
 import { IssueCard } from "@/components/IssueCard";
+import { MatchHeatmap } from "@/components/MatchHeatmap";
+import { FilterFunnel } from "@/components/viz";
+import {
+  applyFilters,
+  DashboardControls,
+  EMPTY_FILTERS,
+  type Filters,
+} from "@/components/DashboardControls";
 import {
   Button,
   EmptyState,
@@ -30,6 +38,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<RecommendationsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
 
   const load = useCallback(
     async (refresh = false) => {
@@ -38,7 +47,7 @@ export default function DashboardPage() {
       try {
         const [p, recs] = await Promise.all([
           api.profile(),
-          api.recommendations(6, refresh),
+          api.recommendations(12, refresh),
         ]);
         setProfile(p);
         setData(recs);
@@ -59,9 +68,19 @@ export default function DashboardPage() {
     load();
   }, [load]);
 
+  const all = data?.recommendations ?? [];
+  const visible = applyFilters(all, filters);
+  // Buckets are the editorial shelves; once the reader starts filtering or
+  // re-sorting they are steering themselves, so get out of the way and show
+  // one ranked list instead.
+  const steering =
+    filters.sort !== "fit" ||
+    filters.difficulty.size > 0 ||
+    filters.repos.size > 0 ||
+    filters.hideGaps;
   const grouped = BUCKET_ORDER.map((bucket) => ({
     bucket,
-    items: (data?.recommendations ?? []).filter((r) => r.bucket === bucket),
+    items: visible.filter((r) => r.bucket === bucket),
   })).filter((g) => g.items.length);
 
   const stats = data?.stats;
@@ -129,13 +148,31 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
-        {stats?.dropped && Object.keys(stats.dropped).length ? (
-          <p className="mt-8 border-t border-line pt-5 font-mono text-[12px] leading-relaxed text-muted">
-            filtered out:{" "}
-            {Object.entries(stats.dropped)
-              .map(([reason, count]) => `${count} ${reason}`)
-              .join(" · ")}
-          </p>
+        {stats?.analyzed ? (
+          <div className="panel mt-8 p-5">
+            <FilterFunnel
+              analyzed={stats.analyzed}
+              passed={stats.passed_filters ?? 0}
+              strong={stats.strong_matches ?? 0}
+              dropped={stats.dropped ?? {}}
+            />
+          </div>
+        ) : null}
+
+        {all.length > 1 ? (
+          <>
+            <div className="mt-6">
+              <DashboardControls
+                recs={all}
+                filters={filters}
+                onChange={setFilters}
+                shown={visible.length}
+              />
+            </div>
+            <div className="mt-4">
+              <MatchHeatmap recs={visible.slice(0, 10)} />
+            </div>
+          </>
         ) : null}
 
         {!data && !error ? (
@@ -158,6 +195,27 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
+        {steering ? (
+          <div className="mt-10 space-y-4">
+            {visible.map((rec, i) => (
+              <IssueCard key={rec.issue.id} rec={rec} index={i} />
+            ))}
+            {visible.length === 0 ? (
+              <EmptyState
+                title="Nothing matches those filters"
+                body="Every recommendation was excluded by the level, repository or readiness filters above."
+                action={
+                  <Button
+                    variant="ghost"
+                    onClick={() => setFilters({ ...EMPTY_FILTERS, sort: filters.sort })}
+                  >
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : null}
+          </div>
+        ) : (
         <div className="mt-10 space-y-12">
           {grouped.map(({ bucket, items }) => (
             <section key={bucket}>
@@ -178,6 +236,7 @@ export default function DashboardPage() {
             </section>
           ))}
         </div>
+        )}
       </main>
     </>
   );
