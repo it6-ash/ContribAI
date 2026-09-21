@@ -265,10 +265,20 @@ body {
   transform-style: preserve-3d;
 }
 
-/* Blocks rise out of the page as they scroll in. */
-:root[data-depth3d="on"] [data-depth] {
+/* Blocks rise out of the page as they scroll in.
+
+   The hidden state lives on .depth-armed, which JavaScript adds only to blocks
+   that are below the fold at mount, and never on [data-depth] itself. An
+   earlier version hid every block in CSS and relied on an observer to reveal
+   them: anything the observer missed stayed invisible forever, which is how
+   the landing page went blank. Content must never depend on JS to be readable.
+*/
+:root[data-depth3d="on"] [data-depth].depth-armed {
   opacity: 0;
   transform: perspective(1200px) rotateX(7deg) translate3d(0, 26px, -70px);
+}
+
+:root[data-depth3d="on"] [data-depth] {
   transition:
     opacity 620ms cubic-bezier(0.16, 1, 0.3, 1),
     transform 720ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -287,7 +297,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   :root[data-depth3d="on"] [data-tilt],
-  :root[data-depth3d="on"] [data-depth] {
+  :root[data-depth3d="on"] [data-depth],
+  :root[data-depth3d="on"] [data-depth].depth-armed {
     transform: none !important;
     opacity: 1 !important;
     transition: none !important;

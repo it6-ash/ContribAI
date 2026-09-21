@@ -65,23 +65,40 @@ export function Depth() {
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("depth-in");
-            io.unobserve(entry.target); // one-way; re-animating on scroll-up is nausea
-          }
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.remove("depth-armed");
+          entry.target.classList.add("depth-in");
+          io.unobserve(entry.target); // one-way; re-animating on scroll-up is nausea
         }
       },
-      { rootMargin: "0px 0px -8% 0px", threshold: 0.05 },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.02 },
     );
 
-    const observe = () =>
+    // Arm only what is genuinely below the fold. Anything already on screen is
+    // left alone and stays visible, so a block can never be hidden waiting for
+    // an observer callback that may not come.
+    const arm = () => {
+      const fold = window.innerHeight;
       document
-        .querySelectorAll<HTMLElement>("[data-depth]:not(.depth-in)")
-        .forEach((el) => io.observe(el));
-    observe();
+        .querySelectorAll<HTMLElement>("[data-depth]:not(.depth-in):not(.depth-armed)")
+        .forEach((el) => {
+          if (el.getBoundingClientRect().top > fold * 0.9) el.classList.add("depth-armed");
+          io.observe(el);
+        });
+    };
+    arm();
+
+    // Last resort. If anything is still armed well after load, something went
+    // wrong and a visible page beats a faithful animation.
+    const failsafe = window.setTimeout(() => {
+      document.querySelectorAll(".depth-armed").forEach((el) => {
+        el.classList.remove("depth-armed");
+        el.classList.add("depth-in");
+      });
+    }, 4000);
 
     // Client-routed pages mount new nodes after this effect has run.
-    const mo = new MutationObserver(observe);
+    const mo = new MutationObserver(arm);
     mo.observe(document.body, { childList: true, subtree: true });
 
     return () => {
@@ -89,6 +106,7 @@ export function Depth() {
       document.removeEventListener("pointerout", onLeave);
       io.disconnect();
       mo.disconnect();
+      clearTimeout(failsafe);
       cancelAnimationFrame(frame);
       delete document.documentElement.dataset.depth3d;
     };
