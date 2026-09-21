@@ -22,7 +22,10 @@ export function TopPick({ rec }: { rec: Recommendation }) {
   // A left rule, not a glow behind the card: this block is the answer, and its
   // weight should come from structure rather than a gradient nobody chose.
   return (
-    <article className="panel relative overflow-hidden border-l-2 border-l-accent p-6 lg:p-8">
+    <article
+      data-tilt
+      className="panel relative overflow-hidden border-l-2 border-l-accent p-6 lg:p-8"
+    >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="rounded-full bg-accent px-2.5 py-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-on-accent">
           Start here

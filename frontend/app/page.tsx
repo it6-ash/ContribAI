@@ -61,7 +61,7 @@ export default function Home() {
           </div>
 
           {/* The product's real output, at the shape it really has. */}
-          <div className="panel p-6 lg:p-7">
+          <div data-tilt className="panel p-6 lg:p-7">
             <div className="flex items-start justify-between gap-6">
               <div className="min-w-0">
                 <p className="font-mono text-[12px] text-muted">
@@ -113,7 +113,7 @@ export default function Home() {
         </section>
 
         {/* ── The gap ──────────────────────────────────────────── */}
-        <section className="border-t border-line py-24">
+        <section data-depth className="border-t border-line py-24">
           <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr]">
             <h2 className="display-sm max-w-[20ch] text-gradient">
               A label says an issue is beginner-friendly. It does not say it is right
@@ -147,7 +147,7 @@ export default function Home() {
 
       <main className="mx-auto w-full max-w-[1400px] px-6">
         {/* ── The model, as space ──────────────────────────────── */}
-        <section className="border-t border-line py-24">
+        <section data-depth className="border-t border-line py-24">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-14">
             <div>
               <h2 className="display-sm max-w-[16ch]">
@@ -171,7 +171,7 @@ export default function Home() {
         </section>
 
         {/* ── Evidence discipline ──────────────────────────────── */}
-        <section className="border-t border-line py-24">
+        <section data-depth className="border-t border-line py-24">
           <h2 className="display-sm max-w-[22ch] text-gradient">
             Facts and inferences never share a line.
           </h2>
@@ -201,7 +201,7 @@ export default function Home() {
         </section>
 
         {/* ── Close ────────────────────────────────────────────── */}
-        <section className="border-t border-line py-28">
+        <section data-depth className="border-t border-line py-28">
           <h2 className="display max-w-[15ch] text-gradient">
             You do not need to know everything before you start.
           </h2>

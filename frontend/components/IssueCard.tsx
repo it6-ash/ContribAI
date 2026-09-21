@@ -26,8 +26,9 @@ export function IssueCard({
 
   return (
     <article
-      className="reveal panel p-5 transition-colors hover:border-muted/40"
-      style={{ "--i": index } as React.CSSProperties}
+      data-depth
+      className="panel p-5 transition-colors hover:border-muted/40"
+      style={{ "--d": index } as React.CSSProperties}
     >
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0">

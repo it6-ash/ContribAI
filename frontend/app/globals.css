@@ -234,3 +234,62 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ── Depth ─────────────────────────────────────────────────────────────────
+   Site-wide 3D, driven by components/Depth.tsx. Gated on [data-depth3d="on"],
+   which that component only sets when motion is allowed, so a reduced-motion
+   visitor gets flat geometry rather than a slower pitch.                    */
+
+:root[data-depth3d="on"] body {
+  perspective: 1400px;
+  perspective-origin: 50% 40%;
+}
+
+/* A surface that leans toward the pointer. --tx/--ty are written by one
+   delegated listener; nothing here re-renders. */
+:root[data-depth3d="on"] [data-tilt] {
+  transform: perspective(900px)
+    rotateY(calc(var(--tx, 0) * 7deg))
+    rotateX(calc(var(--ty, 0) * -7deg))
+    translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 340ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* Content inside a tilted surface sits above it, so the card has thickness
+   rather than reading as a flat image being rotated. */
+:root[data-depth3d="on"] [data-tilt] > * {
+  transform: translateZ(26px);
+  transform-style: preserve-3d;
+}
+
+/* Blocks rise out of the page as they scroll in. */
+:root[data-depth3d="on"] [data-depth] {
+  opacity: 0;
+  transform: perspective(1200px) rotateX(7deg) translate3d(0, 26px, -70px);
+  transition:
+    opacity 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 720ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(var(--d, 0) * 70ms);
+}
+
+:root[data-depth3d="on"] [data-depth].depth-in {
+  opacity: 1;
+  transform: perspective(1200px) rotateX(0) translate3d(0, 0, 0);
+}
+
+/* Without JS, or with motion reduced, every block is simply present. */
+[data-depth] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-depth3d="on"] [data-tilt],
+  :root[data-depth3d="on"] [data-depth] {
+    transform: none !important;
+    opacity: 1 !important;
+    transition: none !important;
+  }
+}
